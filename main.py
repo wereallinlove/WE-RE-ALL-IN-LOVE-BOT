@@ -5,13 +5,34 @@ import os
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True  # Needed for member join events
+intents.members = True
 
 bot = commands.Bot(command_prefix=".", intents=intents)
 
 ADMIN_CHANNEL_ID = 1318298515948048549
 ADMIN_USER_ID = 102413867329519616
 APPROVED_ROLE_NAME = "WE'RE ALL IN LOVE"
+
+class AccessView(View):
+    def __init__(self, member):
+        super().__init__(timeout=None)
+        self.member = member
+
+        approve_button = Button(label="Approve", style=discord.ButtonStyle.success)
+        approve_button.callback = self.approve
+        self.add_item(approve_button)
+
+    async def approve(self, interaction: discord.Interaction):
+        if interaction.user.id != ADMIN_USER_ID:
+            await interaction.response.send_message("You do not have permission to approve.", ephemeral=True)
+            return
+
+        role = discord.utils.get(interaction.guild.roles, name=APPROVED_ROLE_NAME)
+        if role:
+            await self.member.add_roles(role)
+            await interaction.response.edit_message(content=f"{self.member.mention} has been approved and given the role '{role.name}'.", embed=None, view=None)
+        else:
+            await interaction.response.send_message("Role not found.", ephemeral=True)
 
 @bot.event
 async def on_ready():
@@ -30,30 +51,11 @@ async def on_member_join(member):
         color=discord.Color.purple()
     )
 
-    approve_button = Button(label="Approve", style=discord.ButtonStyle.success)
-
-    async def button_callback(interaction):
-        if interaction.user.id != ADMIN_USER_ID:
-            await interaction.response.send_message("You do not have permission to approve.", ephemeral=True)
-            return
-
-        role = discord.utils.get(member.guild.roles, name=APPROVED_ROLE_NAME)
-        if role:
-            await member.add_roles(role)
-            await interaction.response.send_message(f"{member.mention} has been approved and given the role '{role.name}'.", ephemeral=False)
-        else:
-            await interaction.response.send_message("Role not found.", ephemeral=True)
-
-    approve_button.callback = button_callback
-
-    view = View()
-    view.add_item(approve_button)
-
-    await channel.send(embed=embed, view=view)
+    await channel.send(embed=embed, view=AccessView(member))
 
 # Keep-alive for Render deployment
 from keep_alive import keep_alive
 keep_alive()
 
-# Run bot using secret token
+# Start the bot
 bot.run(os.getenv("TOKEN"))
