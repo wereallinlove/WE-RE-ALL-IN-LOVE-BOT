@@ -53,7 +53,7 @@ class ApprovalView(View):
 
 @bot.event
 async def on_ready():
-    bot.add_view(ApprovalView(0))  # Register the persistent view
+    bot.add_view(ApprovalView(0))
     print(f"Logged in as {bot.user}")
 
 @bot.event
@@ -71,22 +71,14 @@ async def on_member_join(member):
         return
 
     embed = discord.Embed(
-        title="🕯️ WE'RE ALL IN LOVE 🕯️",
-        description=(
-            f"✨ {member.mention} has entered the void...\n\n"
-            f"Do you want to grant them access to **WE'RE ALL IN LOVE**?"
-        ),
-        color=discord.Color.from_rgb(233, 104, 214)
-    )
-
-    embed.set_author(
-        name="new arrival",
-        icon_url=member.display_avatar.url
+        title="WE'RE ALL IN LOVE",
+        description=f"{member.mention} joined the server.\n\nGrant them access to **WE'RE ALL IN LOVE**?",
+        color=discord.Color.purple()
     )
 
     await channel.send(embed=embed, view=ApprovalView(member.id))
 
-# Keep-alive for Render deployment
+# Keep-alive for Render
 from keep_alive import keep_alive
 keep_alive()
 
