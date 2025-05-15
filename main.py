@@ -25,8 +25,8 @@ async def on_member_join(member):
         return
 
     embed = discord.Embed(
-        title="A soul has entered the void.",
-        description=f"{member.mention} joined the server.",
+        title="WE'RE ALL IN LOVE",
+        description=f"{member.mention} joined the server.\n\nGrant them access to **WE'RE ALL IN LOVE**?",
         color=discord.Color.purple()
     )
 
