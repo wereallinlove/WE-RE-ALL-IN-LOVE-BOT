@@ -1,21 +1,31 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import Button, View
+from discord.utils import get
 import os
 import asyncio
+import datetime
 
 intents = discord.Intents.default()
-intents.message_content = True
 intents.members = True
+intents.message_content = True
+intents.guilds = True
+intents.voice_states = True
 
 bot = commands.Bot(command_prefix=".", intents=intents)
 
-ADMIN_CHANNEL_ID = 1318298515948048549
+# === CONFIG ===
+ADMIN_CHANNEL_ID = 1318298515948048549  # where the approval embed is sent
 APPROVED_ROLE_NAME = "WE'RE ALL IN LOVE"
 APPROVER_ROLE_NAME = ".approve"
+VC_CHANNEL_ID = 137188628201131223
+ADMIN_ROLE_NAME = ".admin"
+SOUND_URL = "https://srv-store3.gofile.io/download/wc3h3c/chime.mp3"
 
+# === Prevent double join messages ===
 recent_joins = set()
 
+# === APPROVAL BUTTON ===
 class ApproveButton(Button):
     def __init__(self, member_id):
         super().__init__(label="Approve", style=discord.ButtonStyle.success, custom_id=f"approve:{member_id}")
@@ -29,7 +39,6 @@ class ApproveButton(Button):
         member_id = int(self.custom_id.split(":")[1])
         guild = interaction.guild
         member = guild.get_member(member_id)
-
         if not member:
             await interaction.response.send_message("Could not find the member to approve.", ephemeral=True)
             return
@@ -51,11 +60,14 @@ class ApprovalView(View):
         super().__init__(timeout=None)
         self.add_item(ApproveButton(member_id))
 
+# === ON READY ===
 @bot.event
 async def on_ready():
-    bot.add_view(ApprovalView(0))
+    bot.add_view(ApprovalView(0))  # required to register persistent view
     print(f"Logged in as {bot.user}")
+    hourly_chime.start()
 
+# === ON MEMBER JOIN ===
 @bot.event
 async def on_member_join(member):
     if member.id in recent_joins:
@@ -78,7 +90,46 @@ async def on_member_join(member):
 
     await channel.send(embed=embed, view=ApprovalView(member.id))
 
-# Keep-alive for Render
+# === CHIME FUNCTION ===
+async def play_chime(vc_channel):
+    try:
+        if not vc_channel:
+            print("Voice channel not found.")
+            return
+
+        voice_client = await vc_channel.connect()
+        source = await discord.FFmpegOpusAudio.from_probe(SOUND_URL, method='fallback')
+        voice_client.play(source)
+
+        while voice_client.is_playing():
+            await asyncio.sleep(1)
+
+        await voice_client.disconnect()
+
+    except Exception as e:
+        print(f"Error in play_chime: {e}")
+
+# === HOURLY TASK ===
+@tasks.loop(minutes=1)
+async def hourly_chime():
+    now = datetime.datetime.now()
+    if now.minute == 0:
+        guild = discord.utils.get(bot.guilds)
+        if guild:
+            vc_channel = guild.get_channel(VC_CHANNEL_ID)
+            await play_chime(vc_channel)
+
+# === MANUAL COMMAND ===
+@bot.command()
+async def chime(ctx):
+    if get(ctx.author.roles, name=ADMIN_ROLE_NAME):
+        vc_channel = ctx.guild.get_channel(VC_CHANNEL_ID)
+        await play_chime(vc_channel)
+        await ctx.send("Chime activated.")
+    else:
+        await ctx.send("You do not have permission to use this command.")
+
+# === KEEP ALIVE (if needed) ===
 from keep_alive import keep_alive
 keep_alive()
 
