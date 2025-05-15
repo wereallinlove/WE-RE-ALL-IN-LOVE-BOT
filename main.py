@@ -13,26 +13,28 @@ ADMIN_CHANNEL_ID = 1318298515948048549
 APPROVED_ROLE_NAME = "WE'RE ALL IN LOVE"
 ADMIN_ROLE_NAME = ".admin"
 
-# Track which member needs to be approved (by message ID)
-pending_approvals = {}
-
+# Button that carries user ID as custom_id
 class ApproveButton(Button):
-    def __init__(self):
-        super().__init__(label="Approve", style=discord.ButtonStyle.success)
+    def __init__(self, member_id):
+        super().__init__(label="Approve", style=discord.ButtonStyle.success, custom_id=f"approve:{member_id}")
 
     async def callback(self, interaction: discord.Interaction):
-        # Check if user has .admin role
+        # Check if user has admin role
         admin_role = discord.utils.get(interaction.user.roles, name=ADMIN_ROLE_NAME)
         if not admin_role:
             await interaction.response.send_message("You must have the `.admin` role to approve members.", ephemeral=True)
             return
 
-        member = pending_approvals.get(interaction.message.id)
+        # Extract the member ID from the button's custom_id
+        member_id = int(self.custom_id.split(":")[1])
+        guild = interaction.guild
+        member = guild.get_member(member_id)
+
         if not member:
-            await interaction.response.send_message("Couldn't find the member to approve.", ephemeral=True)
+            await interaction.response.send_message("Could not find the member to approve.", ephemeral=True)
             return
 
-        role = discord.utils.get(interaction.guild.roles, name=APPROVED_ROLE_NAME)
+        role = discord.utils.get(guild.roles, name=APPROVED_ROLE_NAME)
         if not role:
             await interaction.response.send_message("Approved role not found.", ephemeral=True)
             return
@@ -45,13 +47,12 @@ class ApproveButton(Button):
         )
 
 class ApprovalView(View):
-    def __init__(self):
+    def __init__(self, member_id):
         super().__init__(timeout=None)
-        self.add_item(ApproveButton())
+        self.add_item(ApproveButton(member_id))
 
 @bot.event
 async def on_ready():
-    bot.add_view(ApprovalView())  # Register the button globally
     print(f"Logged in as {bot.user}")
 
 @bot.event
@@ -67,8 +68,7 @@ async def on_member_join(member):
         color=discord.Color.purple()
     )
 
-    message = await channel.send(embed=embed, view=ApprovalView())
-    pending_approvals[message.id] = member
+    await channel.send(embed=embed, view=ApprovalView(member.id))
 
 # Keep-alive for Render
 from keep_alive import keep_alive
