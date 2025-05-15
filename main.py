@@ -12,9 +12,8 @@ bot = commands.Bot(command_prefix=".", intents=intents)
 
 ADMIN_CHANNEL_ID = 1318298515948048549
 APPROVED_ROLE_NAME = "WE'RE ALL IN LOVE"
-ADMIN_ROLE_NAME = ".admin"
+APPROVER_ROLE_NAME = ".approve"
 
-# Track recent joins to avoid sending duplicate messages
 recent_joins = set()
 
 class ApproveButton(Button):
@@ -22,10 +21,9 @@ class ApproveButton(Button):
         super().__init__(label="Approve", style=discord.ButtonStyle.success, custom_id=f"approve:{member_id}")
 
     async def callback(self, interaction: discord.Interaction):
-        # Check if user has the .admin role
-        admin_role = discord.utils.get(interaction.user.roles, name=ADMIN_ROLE_NAME)
-        if not admin_role:
-            await interaction.response.send_message("You must have the `.admin` role to approve members.", ephemeral=True)
+        approver_role = discord.utils.get(interaction.user.roles, name=APPROVER_ROLE_NAME)
+        if not approver_role:
+            await interaction.response.send_message("You must have the `.approve` role to approve members.", ephemeral=True)
             return
 
         member_id = int(self.custom_id.split(":")[1])
@@ -55,7 +53,7 @@ class ApprovalView(View):
 
 @bot.event
 async def on_ready():
-    bot.add_view(ApprovalView(0))  # dummy view to register button handler
+    bot.add_view(ApprovalView(0))  # Register the persistent view
     print(f"Logged in as {bot.user}")
 
 @bot.event
@@ -73,9 +71,17 @@ async def on_member_join(member):
         return
 
     embed = discord.Embed(
-        title="WE'RE ALL IN LOVE",
-        description=f"{member.mention} joined the server.\n\nGrant them access to **WE'RE ALL IN LOVE**?",
-        color=discord.Color.purple()
+        title="🕯️ WE'RE ALL IN LOVE 🕯️",
+        description=(
+            f"✨ {member.mention} has entered the void...\n\n"
+            f"Do you want to grant them access to **WE'RE ALL IN LOVE**?"
+        ),
+        color=discord.Color.from_rgb(233, 104, 214)
+    )
+
+    embed.set_author(
+        name="new arrival",
+        icon_url=member.display_avatar.url
     )
 
     await channel.send(embed=embed, view=ApprovalView(member.id))
