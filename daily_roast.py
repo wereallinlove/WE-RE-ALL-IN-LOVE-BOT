@@ -7,6 +7,7 @@ import asyncio
 
 VERIFIED_ROLE_ID = 1371885746415341648
 ROAST_CHANNEL_ID = 1318298515948048549
+JOELLE_ID = 781019397820645386
 
 roasts = [
     "Why are you even verified? Go touch grass.",
@@ -76,6 +77,27 @@ def setup(bot):
         await send_roast(interaction.guild)
         await interaction.followup.send("Roast delivered.", ephemeral=True)
 
+    @bot.tree.command(name="roastjoelle", description="Roast Joelle specifically")
+    async def roastjoelle(interaction: discord.Interaction):
+        if VERIFIED_ROLE_ID not in [role.id for role in interaction.user.roles]:
+            await interaction.response.send_message("You don’t have permission to use this command.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        joelle = interaction.guild.get_member(JOELLE_ID)
+        if not joelle:
+            await interaction.followup.send("Joelle is not in this server.", ephemeral=True)
+            return
+
+        roast = random.choice(roasts)
+        channel = interaction.guild.get_channel(ROAST_CHANNEL_ID)
+        if channel:
+            await channel.send(f"{joelle.mention} {roast}")
+            await interaction.followup.send("Joelle has been roasted. 🔥", ephemeral=True)
+        else:
+            await interaction.followup.send("Could not find the roast channel.", ephemeral=True)
+
     @bot.event
     async def on_ready():
         if not roast_scheduler.is_running():
@@ -93,7 +115,6 @@ async def schedule_three_roasts(bot, guild):
 
     total_range = int((end - base).total_seconds())
 
-    # Choose 3 unique times
     delays = sorted(random.sample(range(total_range), 3))
     for seconds in delays:
         roast_time = base + timedelta(seconds=seconds)
