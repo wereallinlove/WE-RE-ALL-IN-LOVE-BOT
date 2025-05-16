@@ -16,24 +16,22 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
-    print(f"Logged in as {bot.user}!")
+    print(f'Logged in as {bot.user}')
+
+    # Register slash commands
+    try:
+        await bot.tree.sync()
+        print("Slash commands synced.")
+    except Exception as e:
+        print(f"Error syncing slash commands: {e}")
 
 # Load all modular command files
-bot.tree.add_command(loveletter_command.loveletter)
-bot.tree.add_command(pin_command.pin)
-bot.tree.add_command(quote_command.quote)
-bot.tree.add_command(daily_roast.roastnow)
-bot.tree.add_command(nick6383_trivia.trivia)
-
-# Start the verify system listener
 verify_system.setup(bot)
+loveletter_command.setup(bot)
+pin_command.setup(bot)
+quote_command.setup(bot)
+daily_roast.setup(bot)
+nick6383_trivia.setup(bot)
 
-if __name__ == "__main__":
-    import asyncio
-
-    async def main():
-        async with bot:
-            await bot.start(os.getenv("DISCORD_TOKEN"))
-
-    asyncio.run(main())
+# Start bot
+bot.run(os.getenv("DISCORD_TOKEN"))
