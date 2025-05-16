@@ -1,8 +1,6 @@
 import discord
 from discord.ext import commands
-import asyncio
-
-# Import all your command and feature modules
+import os
 import verify_system
 import loveletter_command
 import pin_command
@@ -10,21 +8,32 @@ import quote_command
 import daily_roast
 import nick6383_trivia
 
-class MyBot(commands.Bot):
-    async def setup_hook(self):
-        await verify_system.setup(self)
-        await loveletter_command.setup(self)
-        await pin_command.setup(self)
-        await quote_command.setup(self)
-        await daily_roast.setup(self)
-        await nick6383_trivia.setup(self)
-        await self.tree.sync()  # sync globally so slash commands show up in all servers
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
 
-intents = discord.Intents.all()
-bot = MyBot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="/", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
+    await bot.tree.sync()
+    print(f"Logged in as {bot.user}!")
 
-bot.run("YOUR_DISCORD_TOKEN")
+# Load all modular command files
+bot.tree.add_command(loveletter_command.loveletter)
+bot.tree.add_command(pin_command.pin)
+bot.tree.add_command(quote_command.quote)
+bot.tree.add_command(daily_roast.roastnow)
+bot.tree.add_command(nick6383_trivia.trivia)
+
+# Start the verify system listener
+verify_system.setup(bot)
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def main():
+        async with bot:
+            await bot.start(os.getenv("DISCORD_TOKEN"))
+
+    asyncio.run(main())
