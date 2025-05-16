@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 import asyncio
 
 VERIFIED_ROLE_ID = 1371885746415341648
-ADMIN_ROLE_ID = 1371681883796017222
 ROAST_CHANNEL_ID = 1318298515948048549
 
 roasts = [
@@ -69,7 +68,7 @@ roasts = [
 def setup(bot):
     @bot.tree.command(name="roastnow", description="Roast a random verified user")
     async def roastnow(interaction: discord.Interaction):
-        if ADMIN_ROLE_ID not in [role.id for role in interaction.user.roles]:
+        if VERIFIED_ROLE_ID not in [role.id for role in interaction.user.roles]:
             await interaction.response.send_message("You don’t have permission to use this command.", ephemeral=True)
             return
 
