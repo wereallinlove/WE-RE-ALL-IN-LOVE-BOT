@@ -34,6 +34,9 @@ def setup(bot):
                 description=f"*{message.content}*\n\n— ({message.author.mention}, {timestamp})",
                 color=discord.Color.blue()
             )
+
+            # Add profile picture as thumbnail
+            embed.set_thumbnail(url=message.author.display_avatar.url)
             embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
 
             quote_channel = interaction.guild.get_channel(QUOTE_CHANNEL_ID)
