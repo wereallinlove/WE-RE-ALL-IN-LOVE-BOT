@@ -11,17 +11,17 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
-# Server-specific IDs
+# Server IDs
 GUILD_ID = 1318298515948048546
 APPROVER_ROLE_ID = 1372695389555130420
 VERIFIED_ROLE_ID = 1371885746415341648
 VERIFY_CHANNEL_ID = 1372762677868498994
 LOVELETTER_CHANNEL_ID = 1372782806446506047
+PIN_CHANNEL_ID = 1372918174877614100
+PIN_ROLE_ID = 1372919338776133723
 
-# Aesthetic love letter image
 LOVELETTER_IMAGE_URL = "https://media.tenor.com/Ln9wPaZ0N5sAAAAM/hearts-love.gif"
 
-# Control sync flag
 bot.tree.synced = False
 
 class ApproveDenyView(discord.ui.View):
@@ -97,7 +97,6 @@ async def on_member_join(member):
         view = ApproveDenyView(member)
         await channel.send(embed=embed, view=view)
 
-# 🖤 Anonymous love letter command
 @bot.tree.command(name="loveletter", description="Send an anonymous love letter to someone")
 @app_commands.describe(user="The person you want to send the letter to", message="The note to send anonymously")
 async def loveletter(interaction: discord.Interaction, user: discord.User, message: str):
@@ -117,5 +116,38 @@ async def loveletter(interaction: discord.Interaction, user: discord.User, messa
         await interaction.followup.send("Your love letter was sent anonymously. 💌", ephemeral=True)
     else:
         await interaction.response.send_message("Couldn't find the love letter channel.", ephemeral=True)
+
+@bot.tree.command(name="pin", description="Post a memory (image or video) to the pins channel.")
+@app_commands.describe(caption="Optional caption for the memory")
+async def pin(interaction: discord.Interaction, caption: str = None):
+    if PIN_ROLE_ID not in [role.id for role in interaction.user.roles]:
+        await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+        return
+
+    if not interaction.attachments:
+        await interaction.response.send_message("You must attach an image or video to pin.", ephemeral=True)
+        return
+
+    file = interaction.attachments[0]
+    current_year = datetime.now().year
+
+    embed = discord.Embed(
+        title="New Pin",
+        color=discord.Color.from_rgb(255, 100, 180)
+    )
+
+    if caption:
+        embed.description = f"*{caption}*"
+
+    embed.set_image(url=file.url)
+    embed.add_field(name="Submitted by", value=interaction.user.mention, inline=False)
+    embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
+
+    channel = bot.get_channel(PIN_CHANNEL_ID)
+    if channel:
+        await channel.send(embed=embed)
+        await interaction.response.send_message("Your memory was pinned. 📌", ephemeral=True)
+    else:
+        await interaction.response.send_message("Couldn't find the pin channel.", ephemeral=True)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
