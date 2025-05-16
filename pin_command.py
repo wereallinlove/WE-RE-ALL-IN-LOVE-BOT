@@ -34,7 +34,7 @@ def setup(bot):
         current_year = datetime.now().year
 
         embed = discord.Embed(
-            title="New Pin",
+            title="New Pin📌",
             color=discord.Color.from_rgb(255, 100, 180)
         )
 
