@@ -32,10 +32,9 @@ def setup(bot):
             embed = discord.Embed(
                 title=f"Quote from {message.author.display_name}",
                 description=f"*{message.content}*\n\n— ({message.author.mention}, {timestamp})",
-                color=discord.Color.blue()
+                color=discord.Color.from_rgb(255, 100, 180)
             )
 
-            # Add profile picture as thumbnail
             embed.set_thumbnail(url=message.author.display_avatar.url)
             embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
 
