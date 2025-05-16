@@ -3,11 +3,16 @@ from discord import app_commands
 from datetime import datetime
 
 QUOTE_CHANNEL_ID = 1372918174877614100
+QUOTE_ROLE_ID = 1372957206344896622
 
 def setup(bot):
     @bot.tree.command(name="quote", description="Quote a message and send it to the pins channel.")
     @app_commands.describe(message_link="Right-click a message > Copy Message Link, then paste it here")
     async def quote(interaction: discord.Interaction, message_link: str):
+        if QUOTE_ROLE_ID not in [role.id for role in interaction.user.roles]:
+            await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+            return
+
         await interaction.response.defer(ephemeral=True)
 
         try:
@@ -43,7 +48,7 @@ def setup(bot):
                 await quote_channel.send(embed=embed)
                 await interaction.followup.send("Quote posted!", ephemeral=True)
             else:
-                await interaction.followup.send("Could not find the quote channel.", ephemeral=True)
+                await interaction.followup.send("Couldn't find the quote channel.", ephemeral=True)
 
         except Exception as e:
             await interaction.followup.send(f"Error quoting message: {str(e)}", ephemeral=True)
