@@ -11,8 +11,7 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
-# Server IDs
-GUILD_ID = 1318298515948048546
+# Server + Channel + Role IDs
 APPROVER_ROLE_ID = 1372695389555130420
 VERIFIED_ROLE_ID = 1371885746415341648
 VERIFY_CHANNEL_ID = 1372762677868498994
@@ -70,9 +69,9 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}!")
     if not bot.tree.synced:
         try:
-            await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+            await bot.tree.sync()  # Global sync instead of guild-only
             bot.tree.synced = True
-            print("✅ Slash commands synced.")
+            print("✅ Slash commands globally synced.")
         except Exception as e:
             print(f"Sync failed: {e}")
 
