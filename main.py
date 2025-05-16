@@ -28,7 +28,7 @@ async def on_member_join(member):
         title="WE'RE ALL IN LOVE",
         description=f"{member.mention} joined the server.
 
-**Grant them access to WE'RE ALL IN LOVE?**"
+Grant them access to **WE'RE ALL IN LOVE?**"
     )
 
     class ApproveView(View):
