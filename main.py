@@ -1,7 +1,8 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import os
-from datetime import datetime  # For dynamic year
+from datetime import datetime
 
 intents = discord.Intents.default()
 intents.members = True
@@ -11,9 +12,12 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='/', intents=intents)
 
 GUILD_ID = 1318298515948048546
-APPROVER_ROLE_ID = 1372695389555130420  # .approve role
-VERIFIED_ROLE_ID = 1371885746415341648  # @ Verified role
-VERIFY_CHANNEL_ID = 1372762677868498994  # #verify channel
+APPROVER_ROLE_ID = 1372695389555130420
+VERIFIED_ROLE_ID = 1371885746415341648
+VERIFY_CHANNEL_ID = 1372762677868498994
+
+# Boost gif with transparent background (black bg assumed visually)
+BOOST_IMAGE_URL = "https://i.pinimg.com/originals/d3/c6/8a/d3c68aeb6f9ead3e57f80f12d12304b8.gif"
 
 class ApproveDenyView(discord.ui.View):
     def __init__(self, member: discord.Member):
@@ -75,7 +79,7 @@ async def on_member_join(member):
         embed = discord.Embed(
             title="New Member Joined",
             description=f"{member.mention} has joined the server.\n\nPlease approve or deny access.",
-            color=discord.Color.from_rgb(255, 105, 180)  # 💖 Hot pink
+            color=discord.Color.from_rgb(255, 105, 180)
         )
 
         if guild.icon:
@@ -85,5 +89,26 @@ async def on_member_join(member):
 
         view = ApproveDenyView(member)
         await channel.send(embed=embed, view=view)
+
+# 💖 Slash command to test server boost embed
+@bot.tree.command(name="boost", description="Preview the server boost thank-you embed.")
+async def boost(interaction: discord.Interaction):
+    current_year = datetime.now().year
+    user = interaction.user
+
+    embed = discord.Embed(
+        title="Thank you for boosting **WE'RE ALL IN LOVE**",
+        description=f"{user.mention} has just boosted the server 🖤🎀",
+        color=discord.Color.from_rgb(255, 105, 200)
+    )
+    embed.set_image(url=BOOST_IMAGE_URL)
+    embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
+
+    channel = bot.get_channel(VERIFY_CHANNEL_ID)
+    if channel:
+        await channel.send(embed=embed)
+        await interaction.response.send_message("✅ Boost preview sent.", ephemeral=True)
+    else:
+        await interaction.response.send_message("❌ Couldn't find the verify channel.", ephemeral=True)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
