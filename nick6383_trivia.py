@@ -1,13 +1,53 @@
 import discord
-import random
-from discord.ext import commands
 from discord import app_commands
+from discord.ext import commands
+from datetime import datetime
+import random
 
-class Trivia(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+class TriviaView(discord.ui.View):
+    def __init__(self, interaction: discord.Interaction, correct_title: str, options: list):
+        super().__init__(timeout=60)
+        self.interaction = interaction
+        self.correct_title = correct_title
+        self.answered = False
 
-    trivia_data = [
+        for option in options:
+            self.add_item(TriviaButton(option, correct_title, interaction.user))
+
+class TriviaButton(discord.ui.Button):
+    def __init__(self, label: str, correct_title: str, requester: discord.User):
+        super().__init__(label=label, style=discord.ButtonStyle.primary)
+        self.correct_title = correct_title
+        self.requester = requester
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.requester.id:
+            await interaction.response.send_message("This isn't your trivia question.", ephemeral=True)
+            return
+
+        view = self.view
+        for child in view.children:
+            child.disabled = True
+        view.answered = True
+
+        if self.label == self.correct_title:
+            result_embed = discord.Embed(
+                title="Correct!",
+                description=f"**{self.correct_title}** was the right answer.",
+                color=discord.Color.green()
+            )
+        else:
+            result_embed = discord.Embed(
+                title="Incorrect!",
+                description=f"The correct answer was **{self.correct_title}**.",
+                color=discord.Color.red()
+            )
+
+        await interaction.response.edit_message(view=view)
+        await interaction.followup.send(embed=result_embed, ephemeral=True)
+
+# Add your lyrics and songs below
+trivia_data = [
     {"lyric": "I got it out the dirt like a zombie", "song": "From the dirt"},
     {"lyric": "I throw my money up, I throw my money up", "song": "I JUST BOUGHT A NEW NOSE!"},
     {"lyric": "I'm in the club and all I see is paparazzi", "song": "MAKE ME FAMOUS!"},
@@ -293,67 +333,21 @@ class Trivia(commands.Cog):
     {"lyric": "I just killed my ex today", "song": "Murder in hollywood"},
     {"lyric": "You're not my friend so don't act like it", "song": "Haunted house"},
     {"lyric": "I wanna see you get undressed, get undressed for me, I'm starin' like Paparazzi", "song": "Haunted house"},
-    ]
+]
 
-    all_titles = list({entry["song"] for entry in trivia_data})
 
-    @app_commands.command(name="nick6383trivia", description="Guess which song the lyric is from.")
-    async def trivia(self, interaction: discord.Interaction):
-        entry = random.choice(self.trivia_data)
-        lyric = entry["lyric"]
-        correct_song = entry["song"]
+song_titles = list(set([entry['song'] for entry in trivia_data]))
 
-        options = [correct_song]
-        while len(options) < 4:
-            random_title = random.choice(self.all_titles)
-            if random_title not in options:
-                options.append(random_title)
-
-        random.shuffle(options)
-
-        embed = discord.Embed(
-            title="Trivia",
-            description=f"*{lyric}*",
-            color=discord.Color.magenta()
-        )
-        embed.set_thumbnail(url="attachment://server_icon.jpg")  # <-- Set your server icon image here
-
-        view = TriviaView(interaction.user, correct_song, options)
-        await interaction.response.send_message(embed=embed, view=view, file=discord.File("mxJrBrTE_400x400.jpg", filename="server_icon.jpg"))
-
-class TriviaView(discord.ui.View):
-    def __init__(self, user, correct_answer, options):
-        super().__init__(timeout=60)
-        self.user = user
-        self.correct_answer = correct_answer
-
-        for opt in options:
-            self.add_item(TriviaButton(opt, self))
-
-class TriviaButton(discord.ui.Button):
-    def __init__(self, label, view: TriviaView):
-        super().__init__(label=label, style=discord.ButtonStyle.primary)
-        self.correct_answer = view.correct_answer
-        self.user = view.user
-
-    async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.user:
-            await interaction.response.send_message("Only the original player can answer this trivia.", ephemeral=True)
-            return
-
-        if self.label == self.correct_answer:
-            color = discord.Color.green()
-            title = "✅ Correct!"
-        else:
-            color = discord.Color.red()
-            title = "❌ Incorrect"
-
-        embed = discord.Embed(
-            title=title,
-            description=f"The correct answer was **{self.correct_answer}**.",
-            color=color
-        )
-        await interaction.response.edit_message(embed=embed, view=None)
-
-async def setup(bot):
-    await bot.add_cog(Trivia(bot))
+def setup(bot):
+    @bot.tree.command(name="nick6383trivia", description="Guess which song a Nick6383 lyric comes from.")
+    async def nick6383trivia(interaction):
+        question = random.choice(trivia_data)
+        lyric = question['lyric']
+        correct = question['song']
+        choices = [correct] + random.sample([s for s in song_titles if s != correct], 3)
+        random.shuffle(choices)
+        embed = discord.Embed(title="Trivia", description=f"*{lyric}*", color=discord.Color.from_rgb(255, 105, 180))
+        year = datetime.now().year
+        embed.set_footer(text=f"WE'RE ALL IN LOVE {year}")
+        view = TriviaView(interaction, correct, choices)
+        await interaction.response.send_message(embed=embed, view=view)
