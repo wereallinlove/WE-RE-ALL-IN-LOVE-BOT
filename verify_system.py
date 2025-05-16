@@ -36,6 +36,11 @@ class ApproveDenyView(discord.ui.View):
             await interaction.response.send_message("You don't have permission to deny members.", ephemeral=True)
             return
 
+        try:
+            await self.member.send("Your request to join **WE'RE ALL IN LOVE** has been denied.")
+        except discord.Forbidden:
+            pass  # DMs are off
+
         await self.member.kick(reason="Denied by approver")
         await interaction.response.send_message(f"{self.member.mention} has been denied and kicked.")
 
