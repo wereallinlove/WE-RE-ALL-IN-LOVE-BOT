@@ -10,12 +10,14 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='/', intents=intents)
 bot.tree.synced = False
 
-# Load your modules
+# Load features
 import verify_system
 import loveletter_command
+import pin_command  # new!
 
 verify_system.setup(bot)
 loveletter_command.setup(bot)
+pin_command.setup(bot)  # new!
 
 @bot.event
 async def on_ready():
