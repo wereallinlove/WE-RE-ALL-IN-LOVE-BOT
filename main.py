@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 import os
-from datetime import datetime  # ⏰ For dynamic year
+from datetime import datetime  # For dynamic year
 
 intents = discord.Intents.default()
 intents.members = True
@@ -75,13 +75,13 @@ async def on_member_join(member):
         embed = discord.Embed(
             title="New Member Joined",
             description=f"{member.mention} has joined the server.\n\nPlease approve or deny access.",
-            color=discord.Color.blurple()
+            color=discord.Color.from_rgb(255, 105, 180)  # 💖 Hot pink
         )
 
         if guild.icon:
             embed.set_image(url=guild.icon.url)
 
-        embed.set_footer(text=f"**_WE'RE ALL IN LOVE {current_year}_**")
+        embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
 
         view = ApproveDenyView(member)
         await channel.send(embed=embed, view=view)
