@@ -39,7 +39,6 @@ def setup(bot):
         if caption:
             embed.description = f"*{caption}*"
 
-        embed.set_image(url=file.url)
         embed.add_field(name="Submitted by", value=interaction.user.mention, inline=False)
 
         if members:
@@ -47,9 +46,20 @@ def setup(bot):
 
         embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
 
+        # Check file type
+        if file.content_type and file.content_type.startswith("image"):
+            embed.set_image(url=file.url)
+            content = None
+        elif file.content_type and file.content_type.startswith("video"):
+            embed.add_field(name="Video", value=f"[Click to watch video]({file.url})", inline=False)
+            content = file.url  # sent separately to display video
+        else:
+            embed.add_field(name="Attachment", value=f"[View File]({file.url})", inline=False)
+            content = file.url
+
         channel = interaction.guild.get_channel(PIN_CHANNEL_ID)
         if channel:
-            await channel.send(embed=embed)
+            await channel.send(content=content, embed=embed)
             await interaction.followup.send("Your memory was pinned. 📌", ephemeral=True)
         else:
             await interaction.followup.send("Couldn't find the pin channel.", ephemeral=True)
