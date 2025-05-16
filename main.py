@@ -16,7 +16,6 @@ import loveletter_command
 import pin_command
 import quote_command
 import daily_roast
-import nick6383_trivia
 
 verify_system.setup(bot)
 loveletter_command.setup(bot)
