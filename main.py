@@ -11,14 +11,17 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
-# Fixed IDs for reliability
+# Fixed IDs
 GUILD_ID = 1318298515948048546
 APPROVER_ROLE_ID = 1372695389555130420
 VERIFIED_ROLE_ID = 1371885746415341648
 VERIFY_CHANNEL_ID = 1372762677868498994
 
-# Boost embed image (transparent with black background assumed)
+# Boost gif with black background assumed
 BOOST_IMAGE_URL = "https://i.pinimg.com/originals/d3/c6/8a/d3c68aeb6f9ead3e57f80f12d12304b8.gif"
+
+# Control flag to prevent resyncing on every restart
+bot.tree.synced = False
 
 class ApproveDenyView(discord.ui.View):
     def __init__(self, member: discord.Member):
@@ -64,13 +67,13 @@ class ApproveDenyView(discord.ui.View):
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}!")
-    try:
-        # Commented to prevent hitting Discord rate limits during testing
-        # synced = await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-        # print(f"Synced {len(synced)} slash command(s).")
-        print("Bot is ready.")
-    except Exception as e:
-        print(f"Sync failed: {e}")
+    if not bot.tree.synced:
+        try:
+            await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+            bot.tree.synced = True
+            print("✅ Slash commands synced.")
+        except Exception as e:
+            print(f"Sync failed: {e}")
 
 @bot.event
 async def on_member_join(member):
@@ -93,7 +96,7 @@ async def on_member_join(member):
         view = ApproveDenyView(member)
         await channel.send(embed=embed, view=view)
 
-# 🔮 Slash command to test the boost embed
+# Slash command to test the boost embed
 @bot.tree.command(name="boost", description="Preview the server boost thank-you embed.")
 async def boost(interaction: discord.Interaction):
     current_year = datetime.now().year
