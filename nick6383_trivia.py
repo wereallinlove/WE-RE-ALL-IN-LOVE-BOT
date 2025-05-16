@@ -32,7 +32,7 @@ class TriviaView(discord.ui.View):
         for opt in options:
             self.add_item(TriviaButton(opt, opt == correct, user, correct))
 
-# EXAMPLE lyric list (use your full set when you're ready)
+# Example lyric list (use your full set when ready)
 LYRICS = [
     {"lyric": "I got it out the dirt like a zombie", "song": "From the dirt"},
     {"lyric": "I throw my money up, I throw my money up", "song": "I JUST BOUGHT A NEW NOSE!"},
@@ -328,23 +328,21 @@ async def nick6383trivia(interaction: discord.Interaction):
     entry = random.choice(LYRICS)
     lyric = entry["lyric"]
     correct_song = entry["song"]
-
     wrong_songs = random.sample([s for s in SONG_TITLES if s != correct_song], k=3)
     all_options = wrong_songs + [correct_song]
 
     embed = discord.Embed(
         title="Trivia",
-        description=f'"{lyric}"\n\n-nick6383',
+        description=f'"{lyric}"\n-nick6383',
         color=discord.Color.from_rgb(255, 105, 180)  # pink
     )
 
-    # Set your server icon URL here if you want it displayed
     server_icon_url = interaction.guild.icon.url if interaction.guild and interaction.guild.icon else None
     if server_icon_url:
         embed.set_thumbnail(url=server_icon_url)
 
     await interaction.response.send_message(embed=embed, view=TriviaView(correct_song, all_options, interaction.user))
 
-# setup function for main.py to call
+# Setup function for main.py
 async def setup(bot: commands.Bot):
     bot.tree.add_command(nick6383trivia)
