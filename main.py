@@ -16,12 +16,14 @@ import loveletter_command
 import pin_command
 import quote_command
 import daily_roast
+import nick6383_trivia
 
 verify_system.setup(bot)
 loveletter_command.setup(bot)
 pin_command.setup(bot)
 quote_command.setup(bot)
 daily_roast.setup(bot)
+nick6383_trivia.setup(bot)
 
 @bot.event
 async def on_ready():
