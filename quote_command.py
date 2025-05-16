@@ -36,7 +36,7 @@ def setup(bot):
 
             embed = discord.Embed(
                 title=f"Quote from {message.author.display_name}",
-                description=f"*{message.content}*\n\n— ({message.author.mention}, {timestamp})",
+                description=f"\"{message.content}\"\n\n— \"{message.author.mention}\", {timestamp}",
                 color=discord.Color.from_rgb(255, 100, 180)
             )
 
