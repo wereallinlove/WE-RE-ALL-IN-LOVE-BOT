@@ -15,11 +15,13 @@ import verify_system
 import loveletter_command
 import pin_command
 import quote_command
+import daily_roast
 
 verify_system.setup(bot)
 loveletter_command.setup(bot)
 pin_command.setup(bot)
 quote_command.setup(bot)
+daily_roast.setup(bot)
 
 @bot.event
 async def on_ready():
