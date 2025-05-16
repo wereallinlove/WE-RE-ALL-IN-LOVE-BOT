@@ -65,7 +65,7 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}!")
     if not bot.tree.synced:
         try:
-            await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+            await bot.tree.sync()
             bot.tree.synced = True
             print("✅ Slash commands synced.")
         except Exception as e:
