@@ -21,10 +21,8 @@ def setup(bot):
             await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
 
-        # Defer response to safely access followup and attachments
         await interaction.response.defer(ephemeral=True)
 
-        # Get the most recent message by the user in this channel
         history = [msg async for msg in interaction.channel.history(limit=5) if msg.author.id == interaction.user.id and msg.attachments]
         if not history:
             await interaction.followup.send("You must attach an image or video to pin.", ephemeral=True)
@@ -34,8 +32,8 @@ def setup(bot):
         current_year = datetime.now().year
 
         embed = discord.Embed(
-            title="New Pin📌",
-            color=discord.Color.from_rgb(255, 100, 180)
+            title="New Pin 📌",
+            color=discord.Color.red()
         )
 
         if caption:
