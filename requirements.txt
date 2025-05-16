@@ -1,3 +1,4 @@
 discord.py
-ffmpeg
 PyNaCl
+ffmpeg
+ffmpeg-python
