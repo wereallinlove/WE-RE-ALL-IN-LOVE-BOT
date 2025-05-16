@@ -2,7 +2,7 @@ import discord
 from discord.ext import tasks
 from discord import app_commands
 import random
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 import asyncio
 
 VERIFIED_ROLE_ID = 1371885746415341648
@@ -85,25 +85,23 @@ def setup(bot):
 @tasks.loop(hours=24)
 async def roast_scheduler(bot):
     for guild in bot.guilds:
-        await schedule_next_roast(bot, guild)
+        await schedule_three_roasts(bot, guild)
 
-async def schedule_next_roast(bot, guild):
+async def schedule_three_roasts(bot, guild):
     now = datetime.now()
+    base = now.replace(hour=7, minute=0, second=0, microsecond=0)
+    end = (now + timedelta(days=1)).replace(hour=1, minute=0, second=0, microsecond=0)
 
-    # Time range: 7:00 AM to 1:00 AM the next day
-    earliest = now.replace(hour=7, minute=0, second=0, microsecond=0)
-    latest = (now + timedelta(days=1)).replace(hour=1, minute=0, second=0, microsecond=0)
+    total_range = int((end - base).total_seconds())
 
-    # Pick a random time in that range
-    total_seconds = int((latest - earliest).total_seconds())
-    random_seconds = random.randint(0, total_seconds)
-    roast_time = earliest + timedelta(seconds=random_seconds)
-
-    delay = (roast_time - now).total_seconds()
-    print(f"[DAILY ROAST] Next roast scheduled at: {roast_time.strftime('%Y-%m-%d %I:%M %p')}")
-
-    await asyncio.sleep(delay)
-    await send_roast(guild)
+    # Choose 3 unique times
+    delays = sorted(random.sample(range(total_range), 3))
+    for seconds in delays:
+        roast_time = base + timedelta(seconds=seconds)
+        delay = (roast_time - datetime.now()).total_seconds()
+        print(f"[DAILY ROAST] Scheduled roast at {roast_time.strftime('%Y-%m-%d %I:%M %p')}")
+        await asyncio.sleep(delay)
+        await send_roast(guild)
 
 async def send_roast(guild):
     channel = guild.get_channel(ROAST_CHANNEL_ID)
@@ -114,7 +112,7 @@ async def send_roast(guild):
     if not verified_role:
         return
 
-    verified_members = [member for member in verified_role.members if not member.bot]
+    verified_members = [m for m in verified_role.members if not m.bot]
     if not verified_members:
         return
 
