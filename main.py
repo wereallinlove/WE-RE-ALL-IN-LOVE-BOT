@@ -97,4 +97,4 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
 # ============ RUN ============
-bot.run(os.getenv("TOKEN"))
+bot.run(os.getenv("DISCORD_TOKEN"))
