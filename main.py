@@ -13,11 +13,13 @@ bot.tree.synced = False
 # Load features
 import verify_system
 import loveletter_command
-import pin_command  # new!
+import pin_command
+import quote_command
 
 verify_system.setup(bot)
 loveletter_command.setup(bot)
-pin_command.setup(bot)  # new!
+pin_command.setup(bot)
+quote_command.setup(bot)
 
 @bot.event
 async def on_ready():
