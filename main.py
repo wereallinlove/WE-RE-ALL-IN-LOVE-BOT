@@ -1,8 +1,7 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 import os
-from datetime import datetime
+from datetime import datetime  # For dynamic year
 
 intents = discord.Intents.default()
 intents.members = True
@@ -11,17 +10,10 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
-# Fixed IDs
 GUILD_ID = 1318298515948048546
-APPROVER_ROLE_ID = 1372695389555130420
-VERIFIED_ROLE_ID = 1371885746415341648
-VERIFY_CHANNEL_ID = 1372762677868498994
-
-# Boost gif with black background assumed
-BOOST_IMAGE_URL = "https://i.pinimg.com/originals/d3/c6/8a/d3c68aeb6f9ead3e57f80f12d12304b8.gif"
-
-# Control flag to prevent resyncing on every restart
-bot.tree.synced = False
+APPROVER_ROLE_ID = 1372695389555130420  # .approve role
+VERIFIED_ROLE_ID = 1371885746415341648  # @ Verified role
+VERIFY_CHANNEL_ID = 1372762677868498994  # #verify channel
 
 class ApproveDenyView(discord.ui.View):
     def __init__(self, member: discord.Member):
@@ -67,13 +59,11 @@ class ApproveDenyView(discord.ui.View):
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}!")
-    if not bot.tree.synced:
-        try:
-            await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-            bot.tree.synced = True
-            print("✅ Slash commands synced.")
-        except Exception as e:
-            print(f"Sync failed: {e}")
+    try:
+        synced = await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+        print(f"Synced {len(synced)} slash command(s).")
+    except Exception as e:
+        print(f"Sync failed: {e}")
 
 @bot.event
 async def on_member_join(member):
@@ -85,7 +75,7 @@ async def on_member_join(member):
         embed = discord.Embed(
             title="New Member Joined",
             description=f"{member.mention} has joined the server.\n\nPlease approve or deny access.",
-            color=discord.Color.from_rgb(255, 105, 180)
+            color=discord.Color.from_rgb(255, 105, 180)  # Pink
         )
 
         if guild.icon:
@@ -95,26 +85,5 @@ async def on_member_join(member):
 
         view = ApproveDenyView(member)
         await channel.send(embed=embed, view=view)
-
-# Slash command to test the boost embed
-@bot.tree.command(name="boost", description="Preview the server boost thank-you embed.")
-async def boost(interaction: discord.Interaction):
-    current_year = datetime.now().year
-    user = interaction.user
-
-    embed = discord.Embed(
-        title="Thank you for boosting **WE'RE ALL IN LOVE**",
-        description=f"{user.mention} has just boosted the server 🖤🎀",
-        color=discord.Color.from_rgb(255, 105, 200)
-    )
-    embed.set_image(url=BOOST_IMAGE_URL)
-    embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
-
-    channel = bot.get_channel(VERIFY_CHANNEL_ID)
-    if channel:
-        await channel.send(embed=embed)
-        await interaction.response.send_message("✅ Boost preview sent.", ephemeral=True)
-    else:
-        await interaction.response.send_message("❌ Couldn't find the verify channel.", ephemeral=True)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
