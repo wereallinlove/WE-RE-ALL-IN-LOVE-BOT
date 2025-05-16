@@ -33,7 +33,7 @@ def setup(bot):
 
         embed = discord.Embed(
             title="New Pin 📌",
-            color=discord.Color.red()
+            color=discord.Color.from_rgb(255, 100, 180)
         )
 
         if caption:
