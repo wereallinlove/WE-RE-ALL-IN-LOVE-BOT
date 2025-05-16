@@ -11,13 +11,18 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
+# Server-specific IDs
 GUILD_ID = 1318298515948048546
 APPROVER_ROLE_ID = 1372695389555130420
 VERIFIED_ROLE_ID = 1371885746415341648
 VERIFY_CHANNEL_ID = 1372762677868498994
 LOVELETTER_CHANNEL_ID = 1372782806446506047
 
-LOVELETTER_IMAGE_URL = "https://media.tenor.com/Ln9wPaZ0N5sAAAAM/hearts-love.gif"  # pink heart gif
+# Aesthetic love letter image
+LOVELETTER_IMAGE_URL = "https://media.tenor.com/Ln9wPaZ0N5sAAAAM/hearts-love.gif"
+
+# Control sync flag
+bot.tree.synced = False
 
 class ApproveDenyView(discord.ui.View):
     def __init__(self, member: discord.Member):
@@ -65,7 +70,7 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}!")
     if not bot.tree.synced:
         try:
-            await bot.tree.sync()
+            await bot.tree.sync(guild=discord.Object(id=GUILD_ID))  # or use global: await bot.tree.sync()
             bot.tree.synced = True
             print("✅ Slash commands synced.")
         except Exception as e:
@@ -98,8 +103,8 @@ async def on_member_join(member):
 async def loveletter(interaction: discord.Interaction, user: discord.User, message: str):
     current_year = datetime.now().year
     embed = discord.Embed(
-        title=f"💌 Love letter for {user.mention}",
-        description=f"*{message}*",
+        title="💌 Love Letter",
+        description=f"*{message}*\n\nTo: {user.mention}",
         color=discord.Color.from_rgb(255, 80, 160)
     )
     embed.set_image(url=LOVELETTER_IMAGE_URL)
@@ -107,10 +112,9 @@ async def loveletter(interaction: discord.Interaction, user: discord.User, messa
 
     channel = bot.get_channel(LOVELETTER_CHANNEL_ID)
     if channel:
-        await channel.send(content=f"{user.mention}", embed=embed)
+        await channel.send(embed=embed)
         await interaction.response.send_message("Your love letter was sent anonymously. 💌", ephemeral=True)
     else:
         await interaction.response.send_message("Couldn't find the love letter channel.", ephemeral=True)
 
-bot.tree.synced = False
 bot.run(os.getenv("DISCORD_TOKEN"))
