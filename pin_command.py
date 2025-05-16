@@ -23,7 +23,6 @@ def setup(bot):
 
         await interaction.response.defer(ephemeral=True)
 
-        # Look for recent message from this user with an attachment
         history = [
             msg async for msg in interaction.channel.history(limit=5)
             if msg.author.id == interaction.user.id and msg.attachments
@@ -51,8 +50,15 @@ def setup(bot):
         embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
 
         channel = interaction.guild.get_channel(PIN_CHANNEL_ID)
-        if channel:
-            await channel.send(embed=embed, file=await file.to_file())
-            await interaction.followup.send("Your memory was pinned. 📌", ephemeral=True)
-        else:
+        if not channel:
             await interaction.followup.send("Couldn't find the pin channel.", ephemeral=True)
+            return
+
+        # Send based on file type
+        if file.content_type and file.content_type.startswith("image"):
+            embed.set_image(url=file.url)
+            await channel.send(embed=embed)
+        else:
+            await channel.send(embed=embed, file=await file.to_file())
+
+        await interaction.followup.send("Your memory was pinned. 📌", ephemeral=True)
