@@ -70,7 +70,7 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}!")
     if not bot.tree.synced:
         try:
-            await bot.tree.sync(guild=discord.Object(id=GUILD_ID))  # or use global: await bot.tree.sync()
+            await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
             bot.tree.synced = True
             print("✅ Slash commands synced.")
         except Exception as e:
@@ -113,7 +113,8 @@ async def loveletter(interaction: discord.Interaction, user: discord.User, messa
     channel = bot.get_channel(LOVELETTER_CHANNEL_ID)
     if channel:
         await channel.send(embed=embed)
-        await interaction.response.send_message("Your love letter was sent anonymously. 💌", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        await interaction.followup.send("Your love letter was sent anonymously. 💌", ephemeral=True)
     else:
         await interaction.response.send_message("Couldn't find the love letter channel.", ephemeral=True)
 
