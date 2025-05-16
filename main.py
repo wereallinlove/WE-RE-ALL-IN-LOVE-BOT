@@ -1,7 +1,9 @@
+import os
 import discord
 from discord.ext import commands, tasks
 from discord.ui import Button, View
-import os
+from discord.utils import get
+from datetime import datetime
 import asyncio
 
 intents = discord.Intents.default()
@@ -12,17 +14,21 @@ bot = commands.Bot(command_prefix=".", intents=intents)
 
 ADMIN_CHANNEL_ID = 1318298515948048549
 APPROVED_ROLE_NAME = "WE'RE ALL IN LOVE"
+APPROVE_ROLE_NAME = ".approve"
 VOICE_CHANNEL_ID = 137188628201131223
 
-# Load Bell Command at Startup
+TOKEN = os.getenv("TOKEN")
+if not TOKEN:
+    raise ValueError("Bot token not found in environment variables.")
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
-    bell_every_hour.start()
+    hourly_bell.start()
 
 @bot.event
 async def on_member_join(member):
-    await asyncio.sleep(1)
+    await asyncio.sleep(1)  # short delay to prevent duplicate messages
     channel = bot.get_channel(ADMIN_CHANNEL_ID)
     if not channel:
         print("Admin channel not found.")
@@ -31,57 +37,51 @@ async def on_member_join(member):
     embed = discord.Embed(
         title="WE'RE ALL IN LOVE",
         description=f"{member.mention} joined\n\n**Grant them access to WE'RE ALL IN LOVE?**",
-        color=discord.Color.magenta()
+        color=discord.Color.purple()
     )
 
-    class ApproveButton(View):
-        @discord.ui.button(label="Approve", style=discord.ButtonStyle.success)
-        async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
-            if ".approve" not in [role.name for role in interaction.user.roles]:
-                await interaction.response.send_message("You don't have permission to approve.", ephemeral=True)
-                return
+    button = Button(label="Approve", style=discord.ButtonStyle.success)
 
-            role = discord.utils.get(member.guild.roles, name=APPROVED_ROLE_NAME)
-            if role:
-                await member.add_roles(role)
-                await interaction.response.send_message(f"{member.mention} has been approved.", ephemeral=False)
-            else:
-                await interaction.response.send_message("Role not found.", ephemeral=True)
+    async def button_callback(interaction):
+        if APPROVE_ROLE_NAME not in [role.name for role in interaction.user.roles]:
+            await interaction.response.send_message("You don't have permission to approve.", ephemeral=True)
+            return
 
-    await channel.send(embed=embed, view=ApproveButton())
+        role = discord.utils.get(member.guild.roles, name=APPROVED_ROLE_NAME)
+        if role:
+            await member.add_roles(role)
+            await interaction.response.send_message(f"{member.mention} has been approved.", ephemeral=True)
+        else:
+            await interaction.response.send_message("Approval role not found.", ephemeral=True)
+
+    button.callback = button_callback
+    view = View()
+    view.add_item(button)
+    await channel.send(embed=embed, view=view)
 
 @bot.command()
 @commands.has_role(".admin")
 async def bell(ctx):
-    vc = ctx.author.voice
-    if not vc:
-        await ctx.send("You must be in a voice channel.")
-        return
-    
-    try:
-        voice = await vc.channel.connect()
-        voice.play(discord.FFmpegPCMAudio("bell.mp3"))
-        while voice.is_playing():
+    voice_channel = bot.get_channel(VOICE_CHANNEL_ID)
+    if voice_channel and isinstance(voice_channel, discord.VoiceChannel):
+        vc = await voice_channel.connect()
+        vc.play(discord.FFmpegPCMAudio(source="bell.mp3"))
+        while vc.is_playing():
             await asyncio.sleep(1)
-        await voice.disconnect()
-    except Exception as e:
-        await ctx.send(f"Error: {e}")
+        await vc.disconnect()
+    else:
+        await ctx.send("Voice channel not found.")
 
-@tasks.loop(minutes=60)
-async def bell_every_hour():
-    await bot.wait_until_ready()
-    guild = bot.guilds[0]
-    channel = guild.get_channel(VOICE_CHANNEL_ID)
-    if channel:
-        try:
-            voice = await channel.connect()
-            voice.play(discord.FFmpegPCMAudio("bell.mp3"))
-            while voice.is_playing():
+@tasks.loop(minutes=1)
+async def hourly_bell():
+    now = datetime.now()
+    if now.minute == 0:  # On the hour
+        voice_channel = bot.get_channel(VOICE_CHANNEL_ID)
+        if voice_channel and isinstance(voice_channel, discord.VoiceChannel):
+            vc = await voice_channel.connect()
+            vc.play(discord.FFmpegPCMAudio(source="bell.mp3"))
+            while vc.is_playing():
                 await asyncio.sleep(1)
-            await voice.disconnect()
-        except Exception as e:
-            print(f"Hourly bell error: {e}")
+            await vc.disconnect()
 
-# Make sure to run the bot using an environment variable
-import os
-bot.run(os.getenv("DISCORD_TOKEN"))
+bot.run(TOKEN)
