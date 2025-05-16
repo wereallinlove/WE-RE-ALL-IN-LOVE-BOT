@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import os
+from datetime import datetime  # ⏰ For dynamic year
 
 intents = discord.Intents.default()
 intents.members = True
@@ -67,14 +68,22 @@ async def on_ready():
 @bot.event
 async def on_member_join(member):
     channel = bot.get_channel(VERIFY_CHANNEL_ID)
+    guild = member.guild
+
     if channel:
+        current_year = datetime.now().year
         embed = discord.Embed(
             title="New Member Joined",
             description=f"{member.mention} has joined the server.\n\nPlease approve or deny access.",
             color=discord.Color.blurple()
         )
+
+        if guild.icon:
+            embed.set_image(url=guild.icon.url)
+
+        embed.set_footer(text=f"**_WE'RE ALL IN LOVE {current_year}_**")
+
         view = ApproveDenyView(member)
         await channel.send(embed=embed, view=view)
 
-# Use environment variable for token security
 bot.run(os.getenv("DISCORD_TOKEN"))
