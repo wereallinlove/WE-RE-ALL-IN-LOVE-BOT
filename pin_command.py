@@ -21,11 +21,16 @@ def setup(bot):
             await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
 
-        if not interaction.attachments:
-            await interaction.response.send_message("You must attach an image or video to pin.", ephemeral=True)
+        # Defer response to safely access followup and attachments
+        await interaction.response.defer(ephemeral=True)
+
+        # Get the most recent message by the user in this channel
+        history = [msg async for msg in interaction.channel.history(limit=5) if msg.author.id == interaction.user.id and msg.attachments]
+        if not history:
+            await interaction.followup.send("You must attach an image or video to pin.", ephemeral=True)
             return
 
-        file = interaction.attachments[0]
+        file = history[0].attachments[0]
         current_year = datetime.now().year
 
         embed = discord.Embed(
@@ -44,9 +49,9 @@ def setup(bot):
 
         embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
 
-        channel = bot.get_channel(PIN_CHANNEL_ID)
+        channel = interaction.guild.get_channel(PIN_CHANNEL_ID)
         if channel:
             await channel.send(embed=embed)
-            await interaction.response.send_message("Your memory was pinned. 📌", ephemeral=True)
+            await interaction.followup.send("Your memory was pinned. 📌", ephemeral=True)
         else:
-            await interaction.response.send_message("Couldn't find the pin channel.", ephemeral=True)
+            await interaction.followup.send("Couldn't find the pin channel.", ephemeral=True)
