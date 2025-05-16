@@ -23,7 +23,11 @@ def setup(bot):
 
         await interaction.response.defer(ephemeral=True)
 
-        history = [msg async for msg in interaction.channel.history(limit=5) if msg.author.id == interaction.user.id and msg.attachments]
+        # Look for recent message from this user with an attachment
+        history = [
+            msg async for msg in interaction.channel.history(limit=5)
+            if msg.author.id == interaction.user.id and msg.attachments
+        ]
         if not history:
             await interaction.followup.send("You must attach an image or video to pin.", ephemeral=True)
             return
@@ -46,20 +50,9 @@ def setup(bot):
 
         embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
 
-        # Check file type
-        if file.content_type and file.content_type.startswith("image"):
-            embed.set_image(url=file.url)
-            content = None
-        elif file.content_type and file.content_type.startswith("video"):
-            embed.add_field(name="Video", value=f"[Click to watch video]({file.url})", inline=False)
-            content = file.url  # sent separately to display video
-        else:
-            embed.add_field(name="Attachment", value=f"[View File]({file.url})", inline=False)
-            content = file.url
-
         channel = interaction.guild.get_channel(PIN_CHANNEL_ID)
         if channel:
-            await channel.send(content=content, embed=embed)
+            await channel.send(embed=embed, file=await file.to_file())
             await interaction.followup.send("Your memory was pinned. 📌", ephemeral=True)
         else:
             await interaction.followup.send("Couldn't find the pin channel.", ephemeral=True)
