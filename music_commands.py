@@ -102,28 +102,24 @@ class Music(commands.Cog):
             if not urls:
                 await ctx.send("❌ No playable tracks found.")
                 return
+
+            was_playing = voice.is_playing()
+
             for u, i in zip(urls, infos):
                 QUEUE.append((u, i))
 
-            embed = discord.Embed(
-                color=discord.Color.magenta()
-            )
-            song = infos[0]
-            title = song.get("title", "Unknown Title")
-            artist = song.get("uploader", "Unknown Artist")
-
-            if not voice.is_playing():
-                embed.title = "🎶 Now Playing"
-                await asyncio.sleep(2)
-                await self.play_next(ctx.guild.id)
+            if was_playing:
+                embed = discord.Embed(
+                    title="➕ Added to Queue",
+                    description=f"**{infos[0].get('title', 'Unknown')}** by **{infos[0].get('uploader', 'Unknown')}**",
+                    color=discord.Color.magenta()
+                )
+                if "thumbnail" in infos[0]:
+                    embed.set_thumbnail(url=infos[0]["thumbnail"])
+                await ctx.send(embed=embed)
             else:
-                embed.title = "➕ Added to Queue"
-
-            embed.description = f"**{title}** by **{artist}**"
-            if "thumbnail" in song:
-                embed.set_thumbnail(url=song["thumbnail"])
-
-            await ctx.send(embed=embed)
+                await asyncio.sleep(1)
+                await self.play_next(ctx.guild.id)
 
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
