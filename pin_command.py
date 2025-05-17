@@ -1,4 +1,3 @@
-
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -12,16 +11,16 @@ class PinCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="pin", description="Post a PNG, JPG, or WEBP image to the pins channel.")
+    @app_commands.command(name="pin", description="Post an image (PNG, JPG, or WEBP only) to the pins channel.")
     @app_commands.describe(
-        link="REQUIRED: Direct link to a PNG, JPG, or WEBP image only.",
+        link="(Required) Direct link to a PNG, JPG, or WEBP image.",
         caption="Optional caption for the memory",
         members="Optional: Tag members who are in the image"
     )
     async def pin(
         self,
         interaction: discord.Interaction,
-        link: str,  # required
+        link: str,
         caption: Optional[str] = None,
         members: Optional[str] = None
     ):
@@ -29,8 +28,9 @@ class PinCommand(commands.Cog):
             await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
 
-        if not link.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
-            await interaction.response.send_message("❌ Only direct links to PNG, JPG, or WEBP images are allowed. No GIFs, no videos.", ephemeral=True)
+        valid_extensions = (".png", ".jpg", ".jpeg", ".webp")
+        if not any(link.lower().endswith(ext) for ext in valid_extensions):
+            await interaction.response.send_message("❌ Only direct image links ending in .png, .jpg, .jpeg, or .webp are allowed. No GIFs or videos.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
