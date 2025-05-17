@@ -16,10 +16,15 @@ async def on_ready():
 
 @bot.event
 async def setup_hook():
-    # Load only extensions you confirmed are valid
+    # Load all your feature files
     await bot.load_extension("pin_command")
     await bot.load_extension("nick6383_trivia")
-    print("✅ Loaded extensions. Syncing slash commands...")
+    await bot.load_extension("music_commands")
+    await bot.load_extension("loveletter_command")
+    await bot.load_extension("quote_command")
+    await bot.load_extension("daily_roast")
+    await bot.load_extension("verify_system")
+    print("✅ Loaded all extensions. Syncing slash commands...")
     await bot.tree.sync()
     print("✅ Slash commands synced.")
 
