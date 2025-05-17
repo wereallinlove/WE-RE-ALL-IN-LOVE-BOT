@@ -84,14 +84,12 @@ class Music(commands.Cog):
 
     @commands.command(name="play")
     async def play(self, ctx, *, url: str = None):
+        await ctx.message.delete()
+
         if not self.has_music_role(ctx):
-            await ctx.send("🚫 You do not have permission to use this command.")
             return
         if not url:
-            await ctx.send("❌ Please provide a link.")
             return
-
-        await ctx.message.delete()
 
         voice = await self.ensure_voice(ctx)
         if not voice:
@@ -100,7 +98,6 @@ class Music(commands.Cog):
         try:
             urls, infos = self.get_stream_url(url)
             if not urls:
-                await ctx.send("❌ No playable tracks found.")
                 return
 
             was_playing = voice.is_playing()
@@ -126,8 +123,9 @@ class Music(commands.Cog):
 
     @commands.command(name="skip")
     async def skip(self, ctx):
+        await ctx.message.delete()
+
         if not self.has_music_role(ctx):
-            await ctx.send("🚫 You do not have permission to use this command.")
             return
 
         voice = ctx.guild.voice_client
@@ -139,8 +137,9 @@ class Music(commands.Cog):
 
     @commands.command(name="queue")
     async def queue_cmd(self, ctx):
+        await ctx.message.delete()
+
         if not self.has_music_role(ctx):
-            await ctx.send("🚫 You do not have permission to use this command.")
             return
 
         if not QUEUE:
@@ -155,8 +154,9 @@ class Music(commands.Cog):
 
     @commands.command(name="leave")
     async def leave(self, ctx):
+        await ctx.message.delete()
+
         if not self.has_music_role(ctx):
-            await ctx.send("🚫 You do not have permission to use this command.")
             return
 
         voice = ctx.guild.voice_client
