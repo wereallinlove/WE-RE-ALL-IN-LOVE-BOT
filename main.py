@@ -11,9 +11,9 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 EXTENSIONS = [
-    "verify_system",
-    "music_commands",
-    "nick6383_trivia"
+    "verify_system",         # ✅ Approve/Deny join system
+    "music_commands",        # ✅ /play /stop /shuffle from SoundCloud
+    "nick6383_trivia"        # ✅ /nick6383trivia lyric guessing game
 ]
 
 @bot.event
