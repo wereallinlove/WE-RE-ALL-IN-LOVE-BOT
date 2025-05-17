@@ -56,7 +56,7 @@ SONG_DATA = {
     "Can you close the curtains please? Come with me backstage",
     "Times Square, New York City, bitch, Can you show me titties, bitch?"
 ],
-"BEWARE OF THE DOG": [
+"Beware Of The Dog": [
     "Welcome to my fuckin' show, I'm throwin' rocks through your window",
     "I'm that dog, please put me down",
     "We shot up the fuckin' hearse, Then we breakin' in your house"
@@ -105,7 +105,7 @@ SONG_DATA = {
     "I love America but I hate liberals",
     "Shoutout WE'RE ALL IN LOVE 'cause that's my fuckin' team"
 ],
-"CHRISTMAS WISHLIST": [
+"Christmas Wishlist": [
     "I'm playing you like a game, yeah, it's obvious",
     "Fifteen Xanax, I'm not coming back",
     "She fuck me in the club, She fuck me in my Jordan 1s"
@@ -237,7 +237,7 @@ SONG_DATA = {
     "Who put drugs beneath the Christmas tree? Now I'm crying",
     "Did you know I liked that? 'Cause I really like that"
 ],
-"Merry Go Round": [
+"Merry-Go-Round": [
     "Bury me alive, I just wanna cry",
     "I'm dancin' in puddles, I'm dancing in the fuckin' rain",
     "Cardi B, Ice Spice, will you be my zombie wife?"
