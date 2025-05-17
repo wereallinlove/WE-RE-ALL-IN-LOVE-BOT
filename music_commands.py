@@ -38,12 +38,11 @@ class Music(commands.Cog):
             'format': 'bestaudio/best',
             'quiet': True,
             'noplaylist': True,
-            'default_search': 'ytsearch' if not query.startswith("http") else 'auto'
+            'default_search': 'auto'
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(query, download=False)
             if 'entries' in info:
-                # Take the top result
                 info = info['entries'][0]
             return [info['url']], [info]
 
@@ -198,6 +197,51 @@ class Music(commands.Cog):
             await ctx.send(embed=embed)
         else:
             await ctx.send("⚠️ I'm not in a voice channel.")
+
+    @commands.command(name="playlistsearch")
+    async def playlistsearch(self, ctx, *, query: str = None):
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+
+        if not self.has_music_role(ctx) or not query:
+            return
+
+        await ctx.send("🔍 Searching SoundCloud playlists...")
+
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,
+            'default_search': 'scsearch10',
+            'force_generic_extractor': True,
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                results = ydl.extract_info(query + " playlist", download=False)
+
+            if 'entries' not in results or not results['entries']:
+                await ctx.send("❌ No playlists found.")
+                return
+
+            playlists = results['entries']
+            best = max(playlists, key=lambda p: (p.get('like_count') or 0) + (p.get('track_count') or 0))
+
+            embed = discord.Embed(
+                title="🎧 Best Playlist Found",
+                description=f"**[{best.get('title', 'Untitled')}]({best.get('url', '')})**\nby **{best.get('uploader', 'Unknown')}**",
+                color=discord.Color.magenta()
+            )
+            embed.add_field(name="❤️ Likes", value=best.get('like_count', 'N/A'))
+            embed.add_field(name="🎵 Tracks", value=best.get('track_count', 'N/A'))
+            if best.get("thumbnail"):
+                embed.set_thumbnail(url=best["thumbnail"])
+
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            await ctx.send(f"❌ Error: {e}")
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
