@@ -1,30 +1,34 @@
-# main.py — slash command version only
+# main.py — fixed version using commands.Bot with slash support
 
 import discord
-from discord.ext import tasks
-from discord import app_commands
+from discord.ext import commands
 import os
 
 intents = discord.Intents.default()
-intents.message_content = True
 intents.members = True
+intents.message_content = True
 
-class BotClient(discord.Client):
-    def __init__(self):
-        super().__init__(intents=intents)
-        self.tree = app_commands.CommandTree(self)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-    async def setup_hook(self):
-        await self.load_extension("music_commands")
-        await self.load_extension("nick6383_trivia")
-        await self.load_extension("verify_system")
-        await self.tree.sync()
-        print("✅ Slash commands synced")
-
-client = BotClient()
-
-@client.event
+@bot.event
 async def on_ready():
-    print(f"🟢 Bot is ready. Logged in as {client.user}")
+    await bot.tree.sync()
+    print(f"🟢 Bot is ready. Logged in as {bot.user}")
+    print("✅ Slash commands synced")
 
-client.run(os.getenv("DISCORD_TOKEN"))
+EXTENSIONS = [
+    "verify_system",
+    "music_commands",
+    "nick6383_trivia"
+]
+
+@bot.event
+async def setup_hook():
+    for ext in EXTENSIONS:
+        try:
+            await bot.load_extension(ext)
+            print(f"✅ Loaded {ext}")
+        except Exception as e:
+            print(f"❌ Failed to load {ext}: {e}")
+
+bot.run(os.getenv("DISCORD_TOKEN"))
