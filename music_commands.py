@@ -65,9 +65,9 @@ class Music(commands.Cog):
             voice.play(source, after=lambda e: self.bot.loop.create_task(self.play_next(guild_id)))
 
             embed = discord.Embed(
-                title="🎵 Now Playing",
+                title="🎶 Now Playing",
                 description=f"**{info.get('title', 'Unknown')}** by **{info.get('uploader', 'Unknown')}**",
-                color=discord.Color.purple()
+                color=discord.Color.magenta()
             )
             if 'thumbnail' in info:
                 embed.set_thumbnail(url=info['thumbnail'])
@@ -91,10 +91,11 @@ class Music(commands.Cog):
             await ctx.send("❌ Please provide a link.")
             return
 
+        await ctx.message.delete()
+
         voice = await self.ensure_voice(ctx)
         if not voice:
             return
-        await ctx.send("🔍 Loading...")
 
         try:
             urls, infos = self.get_stream_url(url)
@@ -103,10 +104,27 @@ class Music(commands.Cog):
                 return
             for u, i in zip(urls, infos):
                 QUEUE.append((u, i))
-            await ctx.send(f"✅ Added {len(urls)} track(s) to the queue.")
+
+            embed = discord.Embed(
+                color=discord.Color.magenta()
+            )
+            song = infos[0]
+            title = song.get("title", "Unknown Title")
+            artist = song.get("uploader", "Unknown Artist")
+
             if not voice.is_playing():
+                embed.title = "🎶 Now Playing"
                 await asyncio.sleep(2)
                 await self.play_next(ctx.guild.id)
+            else:
+                embed.title = "➕ Added to Queue"
+
+            embed.description = f"**{title}** by **{artist}**"
+            if "thumbnail" in song:
+                embed.set_thumbnail(url=song["thumbnail"])
+
+            await ctx.send(embed=embed)
+
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
 
