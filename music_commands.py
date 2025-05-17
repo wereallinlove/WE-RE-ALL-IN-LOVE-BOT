@@ -152,7 +152,11 @@ class Music(commands.Cog):
             return
 
         if not QUEUE:
-            await ctx.send("📭 Queue is empty.")
+            embed = discord.Embed(
+                title="📭 Queue is empty.",
+                color=discord.Color.magenta()
+            )
+            await ctx.send(embed=embed)
             return
 
         embed = discord.Embed(
