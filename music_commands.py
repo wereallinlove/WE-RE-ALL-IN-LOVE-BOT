@@ -17,31 +17,38 @@ class Music(commands.Cog):
         if ctx.author.voice is None:
             await ctx.send("❌ You must be in a voice channel.")
             return None
-        voice = VC_INSTANCES.get(ctx.guild.id)
+        voice = ctx.guild.voice_client
         if not voice or not voice.is_connected():
-            VC_INSTANCES[ctx.guild.id] = await ctx.author.voice.channel.connect()
-        return VC_INSTANCES[ctx.guild.id]
+            voice = await ctx.author.voice.channel.connect()
+        VC_INSTANCES[ctx.guild.id] = voice
+        return voice
+
+    def has_music_role(self, ctx):
+        return any(role.id == MUSIC_ROLE_ID for role in ctx.author.roles)
 
     def get_stream_url(self, url):
         ydl_opts = {
             'format': 'bestaudio/best',
             'quiet': True,
-            'noplaylist': False,
             'extract_flat': False,
             'default_search': 'auto',
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
+            print("[DEBUG] yt-dlp info:", info)  # temp debug
             if 'entries' in info:
                 entries = info['entries']
+                entries = [entry for entry in entries if 'url' in entry]
                 random.shuffle(entries)
                 return [entry['url'] for entry in entries], entries
             return [info['url']], [info]
 
     async def play_next(self, guild_id):
         if not QUEUE:
-            await VC_INSTANCES[guild_id].disconnect()
-            del VC_INSTANCES[guild_id]
+            voice = VC_INSTANCES.get(guild_id)
+            if voice:
+                await voice.disconnect()
+                VC_INSTANCES.pop(guild_id, None)
             return
 
         url, info = QUEUE.pop(0)
@@ -61,15 +68,11 @@ class Music(commands.Cog):
         if channel:
             await channel.send(embed=embed)
 
-    def has_music_role(self, ctx):
-        return any(role.id == MUSIC_ROLE_ID for role in ctx.author.roles)
-
     @commands.command(name="play")
     async def play(self, ctx, *, url: str = None):
         if not self.has_music_role(ctx):
             await ctx.send("🚫 You do not have permission to use this command.")
             return
-
         if not url:
             await ctx.send("❌ Please provide a link.")
             return
@@ -81,6 +84,9 @@ class Music(commands.Cog):
 
         try:
             urls, infos = self.get_stream_url(url)
+            if not urls:
+                await ctx.send("❌ No playable tracks found.")
+                return
             for u, i in zip(urls, infos):
                 QUEUE.append((u, i))
             await ctx.send(f"✅ Added {len(urls)} track(s) to the queue.")
@@ -102,6 +108,9 @@ class Music(commands.Cog):
 
         try:
             urls, infos = self.get_stream_url(NICKS_LIKES_URL)
+            if not urls:
+                await ctx.send("❌ No playable tracks found in Nick's likes.")
+                return
             for u, i in zip(urls, infos):
                 QUEUE.append((u, i))
             await ctx.send(f"✅ Shuffled and added {len(urls)} track(s) from Nick's likes.")
@@ -116,7 +125,7 @@ class Music(commands.Cog):
             await ctx.send("🚫 You do not have permission to use this command.")
             return
 
-        voice = VC_INSTANCES.get(ctx.guild.id)
+        voice = ctx.guild.voice_client
         if voice and voice.is_playing():
             voice.stop()
             await ctx.send("⏭️ Skipped.")
@@ -143,13 +152,13 @@ class Music(commands.Cog):
             await ctx.send("🚫 You do not have permission to use this command.")
             return
 
-        voice = VC_INSTANCES.get(ctx.guild.id)
+        voice = ctx.guild.voice_client
         if voice and voice.is_connected():
             await voice.disconnect()
-            del VC_INSTANCES[ctx.guild.id]
+            VC_INSTANCES.pop(ctx.guild.id, None)
             await ctx.send("👋 Left the voice channel.")
         else:
-            await ctx.send("⚠️ I'm not in a voice channel.")
+            await ctx.send("⚠️ I'm not currently in a voice channel.")
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
