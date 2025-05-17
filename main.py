@@ -11,7 +11,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 EXTENSIONS = [
     "verify_system",
     "music_commands",
-    "nick6383_trivia_slash"  # ✅ Now using the slash version of trivia
+    "nick6383_trivia_guild_full"  # ✅ Now using the slash version of trivia
 ]
 
 @bot.event
