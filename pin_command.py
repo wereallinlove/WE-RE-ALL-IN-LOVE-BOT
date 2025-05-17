@@ -11,13 +11,13 @@ class PinCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="pin", description="Post an image (PNG, JPG, or WEBP only) to the pins channel.")
+    @app_commands.command(name="pin2", description="Post a PNG, JPG, or WEBP image to the pins channel.")
     @app_commands.describe(
-        link="(Required) Direct link to a PNG, JPG, or WEBP image.",
+        link="(Required) Direct link to a PNG, JPG, JPEG, or WEBP image.",
         caption="Optional caption for the memory",
         members="Optional: Tag members who are in the image"
     )
-    async def pin(
+    async def pin2(
         self,
         interaction: discord.Interaction,
         link: str,
