@@ -154,12 +154,23 @@ class Music(commands.Cog):
         if not QUEUE:
             await ctx.send("📭 Queue is empty.")
             return
-        msg = "**📜 Current Queue:**\n"
-        for idx, (_, info) in enumerate(QUEUE[:10]):
+
+        embed = discord.Embed(
+            title="🎵 Current Queue",
+            description="Here’s what’s coming up next:",
+            color=discord.Color.magenta()
+        )
+
+        for idx, (_, info) in enumerate(QUEUE[:10], start=1):
             title = info.get('title', 'Unknown')
             uploader = info.get('uploader', 'Unknown')
-            msg += f"{idx + 1}. {title} — {uploader}\n"
-        await ctx.send(msg)
+            embed.add_field(
+                name=f"{idx}. {title}",
+                value=f"by {uploader}",
+                inline=False
+            )
+
+        await ctx.send(embed=embed)
 
     @commands.command(name="leave")
     async def leave(self, ctx):
