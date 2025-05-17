@@ -10,7 +10,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 EXTENSIONS = [
     "verify_system",
-    "music_commands"
+    "music_commands",
+    "nick6383_trivia"  # ✅ Added the trivia extension here
 ]
 
 @bot.event
