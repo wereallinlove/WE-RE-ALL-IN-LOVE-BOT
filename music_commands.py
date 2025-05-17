@@ -1,31 +1,29 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
-import asyncio
 import yt_dlp
 
 QUEUE = []
-VC_INSTANCES = {}  # guild_id: voice_client
+VC_INSTANCES = {}  # guild_id: voice client
 TEXT_CHANNEL_ID = 1318298515948048549
 
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def ensure_voice(self, interaction: discord.Interaction):
-        if interaction.user.voice is None:
-            await interaction.response.send_message("❌ You must be in a voice channel.", ephemeral=True)
+    async def ensure_voice(self, ctx):
+        if ctx.author.voice is None:
+            await ctx.send("❌ You must be in a voice channel.")
             return None
-        voice = VC_INSTANCES.get(interaction.guild.id)
+        voice = VC_INSTANCES.get(ctx.guild.id)
         if not voice or not voice.is_connected():
-            VC_INSTANCES[interaction.guild.id] = await interaction.user.voice.channel.connect()
-        return VC_INSTANCES[interaction.guild.id]
+            VC_INSTANCES[ctx.guild.id] = await ctx.author.voice.channel.connect()
+        return VC_INSTANCES[ctx.guild.id]
 
     def get_stream_url(self, url):
         ydl_opts = {
             'format': 'bestaudio/best',
-            'noplaylist': False,
             'quiet': True,
+            'noplaylist': False,
             'extract_flat': False,
             'default_search': 'auto',
         }
@@ -43,9 +41,8 @@ class Music(commands.Cog):
 
         url, info = QUEUE.pop(0)
         voice = VC_INSTANCES[guild_id]
-
         source = await discord.FFmpegOpusAudio.from_probe(url, method='fallback')
-        voice.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(self.play_next(guild_id), self.bot.loop))
+        voice.play(source, after=lambda e: self.bot.loop.create_task(self.play_next(guild_id)))
 
         embed = discord.Embed(
             title="🎵 Now Playing",
@@ -59,46 +56,41 @@ class Music(commands.Cog):
         if channel:
             await channel.send(embed=embed)
 
-    @app_commands.command(name="play2", description="Play a SoundCloud link, playlist, or likes.")
-    @app_commands.describe(url="SoundCloud track, playlist, or likes link")
-    async def play2(self, interaction: discord.Interaction, url: str):
-        voice = await self.ensure_voice(interaction)
+    @commands.command(name="play")
+    async def play(self, ctx, *, url: str):
+        voice = await self.ensure_voice(ctx)
         if not voice:
             return
-
-        await interaction.response.send_message("🔍 Loading...", ephemeral=True)
+        await ctx.send("🔍 Loading...")
 
         try:
             urls, infos = self.get_stream_url(url)
             for u, i in zip(urls, infos):
                 QUEUE.append((u, i))
-
-            await interaction.followup.send(f"✅ Added {len(urls)} track(s) to the queue.", ephemeral=True)
-
+            await ctx.send(f"✅ Added {len(urls)} track(s) to the queue.")
             if not voice.is_playing():
-                await self.play_next(interaction.guild.id)
+                await self.play_next(ctx.guild.id)
         except Exception as e:
-            await interaction.followup.send(f"❌ Failed to load: {e}", ephemeral=True)
+            await ctx.send(f"❌ Error: {e}")
 
-    @app_commands.command(name="skip", description="Skip the current track.")
-    async def skip(self, interaction: discord.Interaction):
-        voice = VC_INSTANCES.get(interaction.guild.id)
+    @commands.command(name="skip")
+    async def skip(self, ctx):
+        voice = VC_INSTANCES.get(ctx.guild.id)
         if voice and voice.is_playing():
             voice.stop()
-            await interaction.response.send_message("⏭️ Skipped.", ephemeral=False)
+            await ctx.send("⏭️ Skipped.")
         else:
-            await interaction.response.send_message("⚠️ Nothing is playing.", ephemeral=True)
+            await ctx.send("⚠️ Nothing is playing.")
 
-    @app_commands.command(name="queue", description="See what songs are in the queue.")
-    async def queue(self, interaction: discord.Interaction):
+    @commands.command(name="queue")
+    async def queue_cmd(self, ctx):
         if not QUEUE:
-            await interaction.response.send_message("📭 Queue is empty.", ephemeral=False)
+            await ctx.send("📭 Queue is empty.")
             return
-
-        embed = discord.Embed(title="🎶 Queue", color=discord.Color.blurple())
+        msg = "**Queue:**\n"
         for idx, (_, info) in enumerate(QUEUE[:10]):
-            embed.add_field(name=f"{idx+1}.", value=f"{info.get('title', 'Unknown')} - {info.get('uploader', 'Unknown')}", inline=False)
-        await interaction.response.send_message(embed=embed, ephemeral=False)
+            msg += f"{idx + 1}. {info.get('title', 'Unknown')} - {info.get('uploader', 'Unknown')}\n"
+        await ctx.send(msg)
 
-async def setup(bot: commands.Bot):
+async def setup(bot):
     await bot.add_cog(Music(bot))
