@@ -649,27 +649,27 @@ class Nick6383Trivia(commands.Cog):
 },
 {
     "lyric": "Thirty racks all on my jeans, I'm off the lean inside the jeep.",
-    "answer": "Bloody Mary"
+    "answer": "Bloody Racks"
 },
 {
     "lyric": "Hop out the limousine, free Britney, I'm off Xanax like it's 2017.",
-    "answer": "Bloody Mary"
+    "answer": "Bloody Racks"
 },
 {
     "lyric": "Post about me on your story, bitch, I don't give a fuck.",
-    "answer": "Bloody Mary"
+    "answer": "Bloody Racks"
 },
 {
     "lyric": "Stomped his ass out, I got blood on my Nikes.",
-    "answer": "Bloody Mary"
+    "answer": "Bloody Racks"
 },
 {
     "lyric": "Why they gay? Why they on my dick?",
-    "answer": "Bloody Mary"
+    "answer": "Bloody Racks"
 },
 {
     "lyric": "I'm saggin' my jeans like some ghetto white trash.",
-    "answer": "Bloody Mary"
+    "answer": "Bloody Racks"
 },
 {
     "lyric": "New designer coat, I'm rockin' Prada.",
