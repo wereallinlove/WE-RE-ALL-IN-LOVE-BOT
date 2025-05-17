@@ -17,11 +17,18 @@ class Music(commands.Cog):
         if ctx.author.voice is None:
             await ctx.send("❌ You must be in a voice channel.")
             return None
+
         voice = ctx.guild.voice_client
-        if not voice or not voice.is_connected():
+        if voice and voice.is_connected():
+            return voice
+
+        try:
             voice = await ctx.author.voice.channel.connect()
-        VC_INSTANCES[ctx.guild.id] = voice
-        return voice
+            VC_INSTANCES[ctx.guild.id] = voice
+            return voice
+        except discord.ClientException:
+            await ctx.send("⚠️ Already connected to a voice channel.")
+            return None
 
     def has_music_role(self, ctx):
         return any(role.id == MUSIC_ROLE_ID for role in ctx.author.roles)
@@ -35,10 +42,8 @@ class Music(commands.Cog):
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            print("[DEBUG] yt-dlp info:", info)  # temp debug
             if 'entries' in info:
-                entries = info['entries']
-                entries = [entry for entry in entries if 'url' in entry]
+                entries = [e for e in info['entries'] if 'url' in e]
                 random.shuffle(entries)
                 return [entry['url'] for entry in entries], entries
             return [info['url']], [info]
@@ -52,21 +57,30 @@ class Music(commands.Cog):
             return
 
         url, info = QUEUE.pop(0)
-        voice = VC_INSTANCES[guild_id]
-        source = await discord.FFmpegOpusAudio.from_probe(url, method='fallback')
-        voice.play(source, after=lambda e: self.bot.loop.create_task(self.play_next(guild_id)))
+        voice = VC_INSTANCES.get(guild_id)
+        if not voice:
+            return
 
-        embed = discord.Embed(
-            title="🎵 Now Playing",
-            description=f"**{info.get('title', 'Unknown')}** by **{info.get('uploader', 'Unknown')}**",
-            color=discord.Color.purple()
-        )
-        if 'thumbnail' in info:
-            embed.set_thumbnail(url=info['thumbnail'])
+        try:
+            source = await discord.FFmpegOpusAudio.from_probe(url, method='fallback')
+            voice.play(source, after=lambda e: self.bot.loop.create_task(self.play_next(guild_id)))
 
-        channel = self.bot.get_channel(TEXT_CHANNEL_ID)
-        if channel:
-            await channel.send(embed=embed)
+            embed = discord.Embed(
+                title="🎵 Now Playing",
+                description=f"**{info.get('title', 'Unknown')}** by **{info.get('uploader', 'Unknown')}**",
+                color=discord.Color.purple()
+            )
+            if 'thumbnail' in info:
+                embed.set_thumbnail(url=info['thumbnail'])
+
+            channel = self.bot.get_channel(TEXT_CHANNEL_ID)
+            if channel:
+                await channel.send(embed=embed)
+        except Exception as e:
+            channel = self.bot.get_channel(TEXT_CHANNEL_ID)
+            if channel:
+                await channel.send(f"❌ Error loading track: {e}")
+            await self.play_next(guild_id)
 
     @commands.command(name="play")
     async def play(self, ctx, *, url: str = None):
@@ -158,7 +172,7 @@ class Music(commands.Cog):
             VC_INSTANCES.pop(ctx.guild.id, None)
             await ctx.send("👋 Left the voice channel.")
         else:
-            await ctx.send("⚠️ I'm not currently in a voice channel.")
+            await ctx.send("⚠️ I'm not in a voice channel.")
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
