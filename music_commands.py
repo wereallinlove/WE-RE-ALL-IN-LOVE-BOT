@@ -84,7 +84,10 @@ class Music(commands.Cog):
 
     @commands.command(name="play")
     async def play(self, ctx, *, url: str = None):
-        await ctx.message.delete()
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
         if not self.has_music_role(ctx):
             return
@@ -123,7 +126,10 @@ class Music(commands.Cog):
 
     @commands.command(name="skip")
     async def skip(self, ctx):
-        await ctx.message.delete()
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
         if not self.has_music_role(ctx):
             return
@@ -137,7 +143,10 @@ class Music(commands.Cog):
 
     @commands.command(name="queue")
     async def queue_cmd(self, ctx):
-        await ctx.message.delete()
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
         if not self.has_music_role(ctx):
             return
@@ -154,7 +163,10 @@ class Music(commands.Cog):
 
     @commands.command(name="leave")
     async def leave(self, ctx):
-        await ctx.message.delete()
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
         if not self.has_music_role(ctx):
             return
