@@ -2,29 +2,28 @@ import discord
 from discord.ext import commands
 import os
 
-GUILD_ID = 1318298515948048546
-
 intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+EXTENSIONS = [
+    "verify_system",
+    "music_commands"
+]
 
 @bot.event
 async def on_ready():
-    print("🧨 Connected. Wiping ALL slash commands...")
+    print(f"🎉 Bot is ready. Logged in as {bot.user}")
 
-    # Wipe GLOBAL commands
-    global_commands = await bot.tree.fetch()
-    for cmd in global_commands:
-        print(f"🗑 Deleting GLOBAL: {cmd.name}")
-        await bot.http.delete_global_command(cmd.id)
-
-    # Wipe GUILD commands
-    guild = discord.Object(id=GUILD_ID)
-    guild_commands = await bot.tree.fetch(guild=guild)
-    for cmd in guild_commands:
-        print(f"🗑 Deleting GUILD: {cmd.name}")
-        await bot.http.delete_guild_command(bot.application_id, GUILD_ID, cmd.id)
-
-    print("✅ All slash commands (global + guild) deleted.")
-    await bot.close()
+@bot.event
+async def setup_hook():
+    for ext in EXTENSIONS:
+        try:
+            await bot.load_extension(ext)
+            print(f"✅ Loaded {ext}")
+        except Exception as e:
+            print(f"❌ Failed to load {ext}: {e}")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
