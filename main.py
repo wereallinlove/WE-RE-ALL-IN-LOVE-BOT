@@ -11,18 +11,14 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 EXTENSIONS = [
-    "pin_command",
-    "nick6383_trivia",
+    "verify_system",
     "music_commands",
-    "loveletter_command",
-    "quote_command",
-    "daily_roast",
-    "verify_system"
+    "nick6383_trivia"
 ]
 
 @bot.event
 async def on_ready():
-    print(f"Bot is ready. Logged in as {bot.user}")
+    print(f"🎉 Bot is ready. Logged in as {bot.user}")
 
 @bot.event
 async def setup_hook():
