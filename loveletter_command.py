@@ -1,27 +1,35 @@
 import discord
 from discord import app_commands
-from datetime import datetime
+from discord.ext import commands
+import random
 
-LOVELETTER_CHANNEL_ID = 1372782806446506047
-LOVELETTER_IMAGE_URL = "https://media.tenor.com/Ln9wPaZ0N5sAAAAM/hearts-love.gif"
+LOVELY_IMAGES = [
+    "https://media.tenor.com/14udFQfQ7NQAAAAC/pixel-hearts.gif",
+    "https://media.tenor.com/yheo1GGu3FwAAAAC/heart.gif",
+    "https://media.tenor.com/3N0aUzZ9c38AAAAC/hearts.gif"
+]
 
-def setup(bot):
-    @bot.tree.command(name="loveletter", description="Send an anonymous love letter to someone")
-    @app_commands.describe(user="The person you want to send the letter to", message="The note to send anonymously")
-    async def loveletter(interaction: discord.Interaction, user: discord.User, message: str):
-        current_year = datetime.now().year
+class Loveletter(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @app_commands.command(name="loveletter", description="Send an anonymous love letter to someone")
+    @app_commands.describe(user="The person you want to send it to", message="The love letter message")
+    async def loveletter(self, interaction: discord.Interaction, user: discord.User, message: str):
         embed = discord.Embed(
             title="💌 Love Letter",
             description=f"*{message}*\n\nTo: {user.mention}",
-            color=discord.Color.from_rgb(255, 80, 160)
+            color=discord.Color.pink()
         )
-        embed.set_image(url=LOVELETTER_IMAGE_URL)
-        embed.set_footer(text=f"WE'RE ALL IN LOVE {current_year}")
+        embed.set_image(url=random.choice(LOVELY_IMAGES))
+        embed.set_footer(text=f"WE'RE ALL IN LOVE {discord.utils.utcnow().year}")
 
-        channel = bot.get_channel(LOVELETTER_CHANNEL_ID)
+        channel = self.bot.get_channel(1372782806446506047)
         if channel:
             await channel.send(embed=embed)
-            await interaction.response.defer(ephemeral=True)
-            await interaction.followup.send("Your love letter was sent anonymously. 💌", ephemeral=True)
+            await interaction.response.send_message("Your love letter was sent anonymously! 😍", ephemeral=True)
         else:
-            await interaction.response.send_message("Couldn't find the love letter channel.", ephemeral=True)
+            await interaction.response.send_message("Failed to find the love letter channel.", ephemeral=True)
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Loveletter(bot))
