@@ -1247,7 +1247,7 @@ self.bot = bot
                 await self.handle(interaction_button, button.label)
 
         embed = discord.Embed(
-            title=f"🎵 Trivia for {interaction.user.display_name}",
+            title=f"Trivia for {interaction.user.display_name}",
             description=f"*{lyric}*",
             color=discord.Color.magenta()
         )
