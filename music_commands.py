@@ -59,9 +59,9 @@ class Music(commands.Cog):
         if channel:
             await channel.send(embed=embed)
 
-    @app_commands.command(name="play", description="Play a SoundCloud link, playlist, or likes.")
+    @app_commands.command(name="play2", description="Play a SoundCloud link, playlist, or likes.")
     @app_commands.describe(url="SoundCloud track, playlist, or likes link")
-    async def play(self, interaction: discord.Interaction, url: str):
+    async def play2(self, interaction: discord.Interaction, url: str):
         voice = await self.ensure_voice(interaction)
         if not voice:
             return
