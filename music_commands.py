@@ -8,7 +8,6 @@ QUEUE = []
 VC_INSTANCES = {}
 TEXT_CHANNEL_ID = 1318298515948048549
 MUSIC_ROLE_ID = 1373224259156967465
-NICKS_LIKES_URL = "https://soundcloud.com/pretty-in-pink-27/likes"
 
 class Music(commands.Cog):
     def __init__(self, bot):
@@ -106,32 +105,7 @@ class Music(commands.Cog):
                 QUEUE.append((u, i))
             await ctx.send(f"✅ Added {len(urls)} track(s) to the queue.")
             if not voice.is_playing():
-                await asyncio.sleep(2)  # short delay for stability
-                await self.play_next(ctx.guild.id)
-        except Exception as e:
-            await ctx.send(f"❌ Error: {e}")
-
-    @commands.command(name="playnickslikes")
-    async def playnickslikes(self, ctx):
-        if not self.has_music_role(ctx):
-            await ctx.send("🚫 You do not have permission to use this command.")
-            return
-
-        voice = await self.ensure_voice(ctx)
-        if not voice:
-            return
-        await ctx.send("🔍 Loading Nick’s SoundCloud likes...")
-
-        try:
-            urls, infos = self.get_stream_url(NICKS_LIKES_URL)
-            if not urls:
-                await ctx.send("❌ No playable tracks found in Nick's likes.")
-                return
-            for u, i in zip(urls, infos):
-                QUEUE.append((u, i))
-            await ctx.send(f"✅ Shuffled and added {len(urls)} track(s) from Nick's likes.")
-            if not voice.is_playing():
-                await asyncio.sleep(2)  # give VC time before streaming
+                await asyncio.sleep(2)
                 await self.play_next(ctx.guild.id)
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
