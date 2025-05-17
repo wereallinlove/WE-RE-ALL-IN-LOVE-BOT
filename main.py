@@ -10,10 +10,7 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-EXTENSIONS = [
-    "verify_system",
-    "music_commands"
-]
+EXTENSIONS = []  # TEMP: No extensions loaded to force Discord to clear slash commands
 
 @bot.event
 async def on_ready():
@@ -21,20 +18,13 @@ async def on_ready():
 
 @bot.event
 async def setup_hook():
-    for ext in EXTENSIONS:
-        try:
-            await bot.load_extension(ext)
-            print(f"✅ Loaded {ext}")
-        except Exception as e:
-            print(f"❌ Failed to load {ext}: {e}")
-
-    print("🔁 Clearing + syncing slash commands to GUILD_ID 1318298515948048546...")
+    print("🧹 Clearing ALL slash commands from the server (temporary sync)...")
     try:
         guild = discord.Object(id=1318298515948048546)
-        bot.tree.clear_commands(guild=guild)  # force-clear old commands
+        bot.tree.clear_commands(guild=guild)
         await bot.tree.sync(guild=guild)
-        print("✅ Slash commands force-resynced to your server.")
+        print("✅ All commands removed from the server.")
     except Exception as e:
-        print(f"❌ Slash command sync failed: {e}")
+        print(f"❌ Slash command clearing failed: {e}")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
