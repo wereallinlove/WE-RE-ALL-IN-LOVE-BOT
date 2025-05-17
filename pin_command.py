@@ -30,7 +30,10 @@ class PinCommand(commands.Cog):
 
         valid_extensions = (".png", ".jpg", ".jpeg", ".webp")
         if not any(link.lower().endswith(ext) for ext in valid_extensions):
-            await interaction.response.send_message("❌ Only direct image links ending in .png, .jpg, .jpeg, or .webp are allowed. No GIFs or videos.", ephemeral=True)
+            await interaction.response.send_message(
+                "❌ Only direct image links ending in .png, .jpg, .jpeg, or .webp are allowed. No GIFs or videos.",
+                ephemeral=True
+            )
             return
 
         await interaction.response.defer(ephemeral=True)
