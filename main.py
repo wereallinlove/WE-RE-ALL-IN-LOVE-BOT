@@ -28,11 +28,12 @@ async def setup_hook():
         except Exception as e:
             print(f"❌ Failed to load {ext}: {e}")
 
-    print("🔁 Syncing slash commands to GUILD_ID 1318298515948048546 for fast updates...")
+    print("🔁 Clearing + syncing slash commands to GUILD_ID 1318298515948048546...")
     try:
         guild = discord.Object(id=1318298515948048546)
+        bot.tree.clear_commands(guild=guild)  # force-clear old commands
         await bot.tree.sync(guild=guild)
-        print("✅ Slash commands synced to your server.")
+        print("✅ Slash commands force-resynced to your server.")
     except Exception as e:
         print(f"❌ Slash command sync failed: {e}")
 
