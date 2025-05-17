@@ -11,8 +11,8 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 EXTENSIONS = [
-    "verify_system",         # ✅ Approve/Deny join system
-    "music_commands",        # ✅ /play /stop /shuffle from SoundCloud
+    "verify_system",
+    "music_commands"
 ]
 
 @bot.event
@@ -28,10 +28,11 @@ async def setup_hook():
         except Exception as e:
             print(f"❌ Failed to load {ext}: {e}")
 
-    print("🔁 Syncing slash commands...")
+    print("🔁 Syncing slash commands to GUILD_ID 1318298515948048546 for fast updates...")
     try:
-        await bot.tree.sync()
-        print("✅ Slash commands synced.")
+        guild = discord.Object(id=1318298515948048546)
+        await bot.tree.sync(guild=guild)
+        print("✅ Slash commands synced to your server.")
     except Exception as e:
         print(f"❌ Slash command sync failed: {e}")
 
