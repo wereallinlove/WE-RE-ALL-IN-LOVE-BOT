@@ -33,19 +33,18 @@ class Music(commands.Cog):
     def has_music_role(self, ctx):
         return any(role.id == MUSIC_ROLE_ID for role in ctx.author.roles)
 
-    def get_stream_url(self, url):
+    def get_stream_url(self, query):
         ydl_opts = {
             'format': 'bestaudio/best',
             'quiet': True,
-            'extract_flat': False,
-            'default_search': 'auto',
+            'noplaylist': True,
+            'default_search': 'ytsearch' if not query.startswith("http") else 'auto'
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            info = ydl.extract_info(query, download=False)
             if 'entries' in info:
-                entries = [e for e in info['entries'] if 'url' in e]
-                random.shuffle(entries)
-                return [entry['url'] for entry in entries], entries
+                # Take the top result
+                info = info['entries'][0]
             return [info['url']], [info]
 
     async def play_next(self, guild_id):
@@ -83,7 +82,7 @@ class Music(commands.Cog):
             await self.play_next(guild_id)
 
     @commands.command(name="play")
-    async def play(self, ctx, *, url: str = None):
+    async def play(self, ctx, *, query: str = None):
         try:
             await ctx.message.delete()
         except:
@@ -91,7 +90,7 @@ class Music(commands.Cog):
 
         if not self.has_music_role(ctx):
             return
-        if not url:
+        if not query:
             return
 
         voice = await self.ensure_voice(ctx)
@@ -99,7 +98,7 @@ class Music(commands.Cog):
             return
 
         try:
-            urls, infos = self.get_stream_url(url)
+            urls, infos = self.get_stream_url(query)
             if not urls:
                 return
 
