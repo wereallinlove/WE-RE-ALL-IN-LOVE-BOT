@@ -52,7 +52,6 @@ class ApproveDenyButtons(ui.View):
                 description=f"{member.mention} has been approved by {interaction.user.mention}.",
                 color=discord.Color.green()
             )
-            embed.set_footer(text=f"WE'RE ALL IN LOVE {discord.utils.utcnow().year}")
             await interaction.channel.send(embed=embed)
 
     @ui.button(label="Deny", style=discord.ButtonStyle.danger)
@@ -79,7 +78,6 @@ class ApproveDenyButtons(ui.View):
                 description=f"{member.mention} was denied access by {interaction.user.mention}.",
                 color=discord.Color.red()
             )
-            embed.set_footer(text=f"WE'RE ALL IN LOVE {discord.utils.utcnow().year}")
             await interaction.channel.send(embed=embed)
 
 async def setup(bot: commands.Bot):
