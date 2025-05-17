@@ -10,22 +10,34 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+EXTENSIONS = [
+    "pin_command",
+    "nick6383_trivia",
+    "music_commands",
+    "loveletter_command",
+    "quote_command",
+    "daily_roast",
+    "verify_system"
+]
+
 @bot.event
 async def on_ready():
     print(f"Bot is ready. Logged in as {bot.user}")
 
 @bot.event
 async def setup_hook():
-    # Load all your feature files
-    await bot.load_extension("pin_command")
-    await bot.load_extension("nick6383_trivia")
-    await bot.load_extension("music_commands")
-    await bot.load_extension("loveletter_command")
-    await bot.load_extension("quote_command")
-    await bot.load_extension("daily_roast")
-    await bot.load_extension("verify_system")
-    print("✅ Loaded all extensions. Syncing slash commands...")
-    await bot.tree.sync()
-    print("✅ Slash commands synced.")
+    for ext in EXTENSIONS:
+        try:
+            await bot.load_extension(ext)
+            print(f"✅ Loaded {ext}")
+        except Exception as e:
+            print(f"❌ Failed to load {ext}: {e}")
+
+    print("🔁 Syncing slash commands...")
+    try:
+        await bot.tree.sync()
+        print("✅ Slash commands synced.")
+    except Exception as e:
+        print(f"❌ Slash command sync failed: {e}")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
