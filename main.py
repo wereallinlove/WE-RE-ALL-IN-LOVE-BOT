@@ -16,13 +16,10 @@ async def on_ready():
 
 @bot.event
 async def setup_hook():
-    await bot.load_extension("approve_command")
-    await bot.load_extension("loveletter_command")
-    await bot.load_extension("pin_command")  # This should match the filename without .py
-    await bot.load_extension("quote_command")
+    # Load only extensions you confirmed are valid
+    await bot.load_extension("pin_command")
     await bot.load_extension("nick6383_trivia")
-    await bot.load_extension("daily_roast")
-    print("✅ All extensions loaded. Syncing commands...")
+    print("✅ Loaded extensions. Syncing slash commands...")
     await bot.tree.sync()
     print("✅ Slash commands synced.")
 
