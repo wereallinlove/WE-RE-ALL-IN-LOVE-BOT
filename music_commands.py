@@ -186,7 +186,13 @@ class Music(commands.Cog):
         if voice and voice.is_connected():
             await voice.disconnect()
             VC_INSTANCES.pop(ctx.guild.id, None)
-            await ctx.send("👋 Left the voice channel.")
+
+            embed = discord.Embed(
+                title="👋 Disconnected",
+                description="The bot has left the voice channel.",
+                color=discord.Color.magenta()
+            )
+            await ctx.send(embed=embed)
         else:
             await ctx.send("⚠️ I'm not in a voice channel.")
 
