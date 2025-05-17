@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import yt_dlp
 import random
+import asyncio
 
 QUEUE = []
 VC_INSTANCES = {}
@@ -49,17 +50,16 @@ class Music(commands.Cog):
             return [info['url']], [info]
 
     async def play_next(self, guild_id):
+        voice = VC_INSTANCES.get(guild_id)
+        if not voice or not voice.is_connected():
+            return
+
         if not QUEUE:
-            voice = VC_INSTANCES.get(guild_id)
-            if voice:
-                await voice.disconnect()
-                VC_INSTANCES.pop(guild_id, None)
+            await voice.disconnect()
+            VC_INSTANCES.pop(guild_id, None)
             return
 
         url, info = QUEUE.pop(0)
-        voice = VC_INSTANCES.get(guild_id)
-        if not voice:
-            return
 
         try:
             source = await discord.FFmpegOpusAudio.from_probe(url, method='fallback')
@@ -80,6 +80,7 @@ class Music(commands.Cog):
             channel = self.bot.get_channel(TEXT_CHANNEL_ID)
             if channel:
                 await channel.send(f"❌ Error loading track: {e}")
+            await asyncio.sleep(1)
             await self.play_next(guild_id)
 
     @commands.command(name="play")
@@ -105,6 +106,7 @@ class Music(commands.Cog):
                 QUEUE.append((u, i))
             await ctx.send(f"✅ Added {len(urls)} track(s) to the queue.")
             if not voice.is_playing():
+                await asyncio.sleep(2)  # short delay for stability
                 await self.play_next(ctx.guild.id)
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
@@ -129,6 +131,7 @@ class Music(commands.Cog):
                 QUEUE.append((u, i))
             await ctx.send(f"✅ Shuffled and added {len(urls)} track(s) from Nick's likes.")
             if not voice.is_playing():
+                await asyncio.sleep(2)  # give VC time before streaming
                 await self.play_next(ctx.guild.id)
         except Exception as e:
             await ctx.send(f"❌ Error: {e}")
@@ -155,9 +158,11 @@ class Music(commands.Cog):
         if not QUEUE:
             await ctx.send("📭 Queue is empty.")
             return
-        msg = "**Queue:**\n"
+        msg = "**📜 Current Queue:**\n"
         for idx, (_, info) in enumerate(QUEUE[:10]):
-            msg += f"{idx + 1}. {info.get('title', 'Unknown')} - {info.get('uploader', 'Unknown')}\n"
+            title = info.get('title', 'Unknown')
+            uploader = info.get('uploader', 'Unknown')
+            msg += f"{idx + 1}. {title} — {uploader}\n"
         await ctx.send(msg)
 
     @commands.command(name="leave")
