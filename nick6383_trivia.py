@@ -73,7 +73,7 @@ SONG_DATA = {
 "Black Amiri Uggs": [
     "808s, Kicks, Claps, Snares",
     "Money, drugs, fame and notoriety",
-    "I got no presents on Christmas"
+    "I got no presents on Christmas",
 ],
 "Bloody Racks": [
     "Hop outside the limousine in the backseat of the cab",
