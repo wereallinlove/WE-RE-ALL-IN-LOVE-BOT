@@ -198,50 +198,31 @@ class Music(commands.Cog):
         else:
             await ctx.send("⚠️ I'm not in a voice channel.")
 
-    @commands.command(name="playlistsearch")
-    async def playlistsearch(self, ctx, *, query: str = None):
+    @commands.command(name="shuffle")
+    async def shuffle(self, ctx):
         try:
             await ctx.message.delete()
         except:
             pass
 
-        if not self.has_music_role(ctx) or not query:
+        if not self.has_music_role(ctx):
             return
 
-        await ctx.send("🔍 Searching SoundCloud playlists...")
-
-        ydl_opts = {
-            'quiet': True,
-            'extract_flat': True,
-            'default_search': 'scsearch10',
-            'force_generic_extractor': True,
-        }
-
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                results = ydl.extract_info(query + " playlist", download=False)
-
-            if 'entries' not in results or not results['entries']:
-                await ctx.send("❌ No playlists found.")
-                return
-
-            playlists = results['entries']
-            best = max(playlists, key=lambda p: (p.get('like_count') or 0) + (p.get('track_count') or 0))
-
+        if len(QUEUE) < 2:
             embed = discord.Embed(
-                title="🎧 Best Playlist Found",
-                description=f"**[{best.get('title', 'Untitled')}]({best.get('url', '')})**\nby **{best.get('uploader', 'Unknown')}**",
+                title="ℹ️ Not enough tracks to shuffle.",
                 color=discord.Color.magenta()
             )
-            embed.add_field(name="❤️ Likes", value=best.get('like_count', 'N/A'))
-            embed.add_field(name="🎵 Tracks", value=best.get('track_count', 'N/A'))
-            if best.get("thumbnail"):
-                embed.set_thumbnail(url=best["thumbnail"])
-
             await ctx.send(embed=embed)
+            return
 
-        except Exception as e:
-            await ctx.send(f"❌ Error: {e}")
+        random.shuffle(QUEUE)
+        embed = discord.Embed(
+            title="🔀 Queue Shuffled",
+            description="The current queue has been shuffled.",
+            color=discord.Color.magenta()
+        )
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
