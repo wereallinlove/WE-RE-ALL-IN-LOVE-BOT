@@ -16,6 +16,29 @@ class Music(commands.Cog):
     def has_music_role(self, interaction):
         return any(role.id == MUSIC_ROLE_ID for role in interaction.user.roles)
 
+    def get_text_channel_for_voice(self, interaction):
+        voice = interaction.user.voice
+        if not voice or not voice.channel or not voice.channel.category:
+            return None
+        for ch in voice.channel.category.text_channels:
+            return ch
+        return None
+
+    def user_in_valid_music_context(self, interaction):
+        if not interaction.user.voice:
+            return False
+        text_channel = self.get_text_channel_for_voice(interaction)
+        return text_channel and text_channel.id == interaction.channel.id
+
+    async def reject_if_invalid_context(self, interaction):
+        if not self.user_in_valid_music_context(interaction):
+            await interaction.response.send_message(
+                "❌ You can only use this command in the voice chat text channel for the VC you’re currently in.",
+                ephemeral=True
+            )
+            return True
+        return False
+
     async def ensure_voice(self, interaction):
         if not interaction.user.voice:
             await interaction.response.send_message(embed=discord.Embed(
@@ -68,13 +91,6 @@ class Music(commands.Cog):
 
         return urls, infos
 
-    def get_voice_text_channel(self, interaction):
-        voice_client = interaction.guild.voice_client
-        if voice_client and voice_client.channel and voice_client.channel.category:
-            for ch in voice_client.channel.category.text_channels:
-                return ch
-        return interaction.channel
-
     async def play_next(self, guild_id):
         voice = VC_INSTANCES.get(guild_id)
         if not voice or not voice.is_connected():
@@ -98,13 +114,10 @@ class Music(commands.Cog):
             if 'thumbnail' in info:
                 embed.set_thumbnail(url=info['thumbnail'])
 
-            for guild in self.bot.guilds:
-                if guild.id == guild_id:
-                    vc = VC_INSTANCES.get(guild_id)
-                    if vc and vc.channel and vc.channel.category:
-                        for ch in vc.channel.category.text_channels:
-                            await ch.send(embed=embed)
-                            return
+            if voice.channel.category:
+                for ch in voice.channel.category.text_channels:
+                    await ch.send(embed=embed)
+                    return
         except Exception as e:
             print(f"Playback error: {e}")
             await asyncio.sleep(1)
@@ -113,6 +126,8 @@ class Music(commands.Cog):
     @app_commands.command(name="play", description="Play a song or playlist from SoundCloud")
     async def play(self, interaction: discord.Interaction, query: str):
         if not self.has_music_role(interaction):
+            return
+        if await self.reject_if_invalid_context(interaction):
             return
 
         voice = await self.ensure_voice(interaction)
@@ -157,6 +172,8 @@ class Music(commands.Cog):
     async def skip(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
             return
+        if await self.reject_if_invalid_context(interaction):
+            return
 
         voice = interaction.guild.voice_client
         if voice and voice.is_playing():
@@ -171,6 +188,8 @@ class Music(commands.Cog):
     @app_commands.command(name="queue", description="Show the current SoundCloud queue")
     async def queue_cmd(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
+            return
+        if await self.reject_if_invalid_context(interaction):
             return
 
         if not QUEUE:
@@ -195,6 +214,8 @@ class Music(commands.Cog):
     async def leave(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
             return
+        if await self.reject_if_invalid_context(interaction):
+            return
 
         voice = interaction.guild.voice_client
         if voice and voice.is_connected():
@@ -212,6 +233,8 @@ class Music(commands.Cog):
     @app_commands.command(name="shuffle", description="Shuffle the current SoundCloud queue")
     async def shuffle(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
+            return
+        if await self.reject_if_invalid_context(interaction):
             return
 
         if len(QUEUE) < 2:
