@@ -22,7 +22,8 @@ EXTENSIONS = [
     "nick6383_trivia",
     "roast_joelle",
     "roast_valentine",
-    "loveletter"
+    "loveletter",
+    "clips"
 ]
 
 @bot.event
