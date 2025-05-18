@@ -1,4 +1,3 @@
-
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -8,7 +7,6 @@ import asyncio
 
 QUEUE = []
 VC_INSTANCES = {}
-TEXT_CHANNEL_ID = 1318298515948048549
 MUSIC_ROLE_ID = 1373224259156967465
 
 class Music(commands.Cog):
@@ -48,7 +46,7 @@ class Music(commands.Cog):
             'default_search': 'auto',
             'extract_flat': False,
             'noplaylist': False,
-            'playlistend': 30  # safety limit
+            'playlistend': 30
         }
 
         urls, infos = [], []
@@ -56,26 +54,26 @@ class Music(commands.Cog):
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(query, download=False)
-
                 if 'entries' in info:
                     for entry in info['entries']:
-                        if not entry:
-                            continue
-                        try:
-                            if 'url' in entry:
-                                urls.append(entry['url'])
-                                infos.append(entry)
-                        except Exception as entry_error:
-                            print(f"[yt_dlp] Failed on playlist entry: {entry_error}")
-                else:
-                    if 'url' in info:
-                        urls.append(info['url'])
-                        infos.append(info)
+                        if entry and 'url' in entry:
+                            urls.append(entry['url'])
+                            infos.append(entry)
+                elif 'url' in info:
+                    urls.append(info['url'])
+                    infos.append(info)
         except Exception as e:
             print(f"[yt_dlp] Failed to extract info: {e}")
             return [], []
 
         return urls, infos
+
+    def get_voice_text_channel(self, interaction):
+        voice_client = interaction.guild.voice_client
+        if voice_client and voice_client.channel and voice_client.channel.category:
+            for ch in voice_client.channel.category.text_channels:
+                return ch
+        return interaction.channel
 
     async def play_next(self, guild_id):
         voice = VC_INSTANCES.get(guild_id)
@@ -88,7 +86,6 @@ class Music(commands.Cog):
             return
 
         url, info = QUEUE.pop(0)
-
         try:
             source = await discord.FFmpegOpusAudio.from_probe(url, method='fallback')
             voice.play(source, after=lambda e: self.bot.loop.create_task(self.play_next(guild_id)))
@@ -101,13 +98,15 @@ class Music(commands.Cog):
             if 'thumbnail' in info:
                 embed.set_thumbnail(url=info['thumbnail'])
 
-            channel = self.bot.get_channel(TEXT_CHANNEL_ID)
-            if channel:
-                await channel.send(embed=embed)
+            for guild in self.bot.guilds:
+                if guild.id == guild_id:
+                    vc = VC_INSTANCES.get(guild_id)
+                    if vc and vc.channel and vc.channel.category:
+                        for ch in vc.channel.category.text_channels:
+                            await ch.send(embed=embed)
+                            return
         except Exception as e:
-            channel = self.bot.get_channel(TEXT_CHANNEL_ID)
-            if channel:
-                await channel.send(f"❌ Error loading track: {e}")
+            print(f"Playback error: {e}")
             await asyncio.sleep(1)
             await self.play_next(guild_id)
 
