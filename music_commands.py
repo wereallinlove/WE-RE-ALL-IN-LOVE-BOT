@@ -245,7 +245,10 @@ class Music(commands.Cog):
 
         embed = discord.Embed(
             title="🎵 Music Help",
-            description="To use music commands, join a voice channel and type in the voice channel’s chat room.",
+            description=(
+                "To use music commands, join a voice channel and type in the voice channel’s linked text chat.\n\n"
+                "💬 [Click here to jump to the correct music channel](https://discord.com/channels/1318298515948048546/1371886282011312231)"
+            ),
             color=discord.Color.magenta()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
