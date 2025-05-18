@@ -8,6 +8,8 @@ import asyncio
 QUEUE = []
 VC_INSTANCES = {}
 MUSIC_ROLE_ID = 1373224259156967465
+ALLOWED_TEXT_CHANNEL_ID = 1371886282011312231
+BLOCKED_CHANNEL_ID = 1318298515948048549
 
 class Music(commands.Cog):
     def __init__(self, bot):
@@ -16,26 +18,12 @@ class Music(commands.Cog):
     def has_music_role(self, interaction):
         return any(role.id == MUSIC_ROLE_ID for role in interaction.user.roles)
 
-    def get_text_channel_for_voice(self, interaction):
-        voice = interaction.user.voice
-        if not voice or not voice.channel or not voice.channel.category:
-            return None
-        for ch in voice.channel.category.text_channels:
-            return ch
-        return None
-
-    def user_in_valid_music_context(self, interaction):
-        if not interaction.user.voice:
-            return False
-        text_channel = self.get_text_channel_for_voice(interaction)
-        return text_channel and text_channel.id == interaction.channel.id
-
-    async def reject_if_invalid_context(self, interaction):
-        if not self.user_in_valid_music_context(interaction):
-            await interaction.response.send_message(
-                "❌ You can only use this command in the voice chat text channel for the VC you’re currently in.",
-                ephemeral=True
-            )
+    async def reject_if_wrong_channel(self, interaction):
+        if interaction.channel.id == BLOCKED_CHANNEL_ID:
+            await interaction.response.send_message("❌ Use the voice chat text channel for music commands.", ephemeral=True)
+            return True
+        if interaction.channel.id != ALLOWED_TEXT_CHANNEL_ID:
+            await interaction.response.send_message("❌ You can only use music commands in the VC text channel.", ephemeral=True)
             return True
         return False
 
@@ -127,7 +115,7 @@ class Music(commands.Cog):
     async def play(self, interaction: discord.Interaction, query: str):
         if not self.has_music_role(interaction):
             return
-        if await self.reject_if_invalid_context(interaction):
+        if await self.reject_if_wrong_channel(interaction):
             return
 
         voice = await self.ensure_voice(interaction)
@@ -172,7 +160,7 @@ class Music(commands.Cog):
     async def skip(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
             return
-        if await self.reject_if_invalid_context(interaction):
+        if await self.reject_if_wrong_channel(interaction):
             return
 
         voice = interaction.guild.voice_client
@@ -189,7 +177,7 @@ class Music(commands.Cog):
     async def queue_cmd(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
             return
-        if await self.reject_if_invalid_context(interaction):
+        if await self.reject_if_wrong_channel(interaction):
             return
 
         if not QUEUE:
@@ -214,7 +202,7 @@ class Music(commands.Cog):
     async def leave(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
             return
-        if await self.reject_if_invalid_context(interaction):
+        if await self.reject_if_wrong_channel(interaction):
             return
 
         voice = interaction.guild.voice_client
@@ -234,7 +222,7 @@ class Music(commands.Cog):
     async def shuffle(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
             return
-        if await self.reject_if_invalid_context(interaction):
+        if await self.reject_if_wrong_channel(interaction):
             return
 
         if len(QUEUE) < 2:
@@ -245,6 +233,15 @@ class Music(commands.Cog):
         random.shuffle(QUEUE)
         embed = discord.Embed(title="🔀 Queue Shuffled", description="The current queue has been shuffled.", color=discord.Color.magenta())
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="musichelp", description="How to use music commands")
+    async def musichelp(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="🎵 Music Help",
+            description="To use music commands, join a voice channel and then use `/play`, `/queue`, etc. inside the voice chat’s linked text channel only.",
+            color=discord.Color.magenta()
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
