@@ -32,7 +32,8 @@ class LoveLetterView(discord.ui.View):
         )
 
         channel = interaction.channel or self.bot.get_channel(interaction.channel_id)
-        await channel.send(embed=embed)
+        original_message = await channel.fetch_message(self.message_id)
+        await channel.send(embed=embed, reference=original_message)
         await interaction.response.send_message("✅ Letter has been revealed.", ephemeral=True)
         self.stop()
 
@@ -66,7 +67,7 @@ class LoveLetter(commands.Cog):
         await sent.add_reaction(self.reveal_emoji)
 
         self.sent_messages[sent.id] = (interaction.user.id, user.id)
-        view.message_id = sent.id  # update view's reference
+        view.message_id = sent.id
         await interaction.response.send_message("💌 Your anonymous love letter has been sent!", ephemeral=True)
 
     @commands.Cog.listener()
@@ -90,7 +91,7 @@ class LoveLetter(commands.Cog):
                 description=f"{recipient.mention}, this love letter was sent by {sender.mention}",
                 color=discord.Color.green()
             )
-            await channel.send(embed=embed)
+            await channel.send(embed=embed, reference=message)
 
 async def setup(bot):
     await bot.add_cog(LoveLetter(bot))
