@@ -365,9 +365,7 @@ class TriviaView(View):
             return
         self.answered = True
 
-        await interaction.response.defer()
         used_recently.add(self.user_id)
-        await asyncio.sleep(TRIVIA_COOLDOWN)
         used_recently.discard(self.user_id)
 
         for child in self.children:
