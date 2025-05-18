@@ -1,3 +1,4 @@
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -47,25 +48,32 @@ class Music(commands.Cog):
             'default_search': 'auto',
             'extract_flat': False,
             'noplaylist': False,
-            'playlistend': 50
+            'playlistend': 30  # safety limit
         }
 
         urls, infos = [], []
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            try:
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(query, download=False)
-                entries = info.get('entries', [info])
-                for entry in entries:
-                    try:
-                        if entry and 'url' in entry:
-                            urls.append(entry['url'])
-                            infos.append(entry)
-                    except Exception as sub_error:
-                        print(f"Skipping bad track: {sub_error}")
-            except Exception as main_error:
-                print(f"Failed to extract playlist info: {main_error}")
-                return [], []
+
+                if 'entries' in info:
+                    for entry in info['entries']:
+                        if not entry:
+                            continue
+                        try:
+                            if 'url' in entry:
+                                urls.append(entry['url'])
+                                infos.append(entry)
+                        except Exception as entry_error:
+                            print(f"[yt_dlp] Failed on playlist entry: {entry_error}")
+                else:
+                    if 'url' in info:
+                        urls.append(info['url'])
+                        infos.append(info)
+        except Exception as e:
+            print(f"[yt_dlp] Failed to extract info: {e}")
+            return [], []
 
         return urls, infos
 
@@ -117,7 +125,7 @@ class Music(commands.Cog):
             if not urls:
                 await interaction.response.send_message(embed=discord.Embed(
                     title="⚠️ No playable tracks found.",
-                    description="The playlist may contain removed/private tracks.",
+                    description="This playlist might be private, removed, or unsupported.",
                     color=discord.Color.magenta()
                 ))
                 return
