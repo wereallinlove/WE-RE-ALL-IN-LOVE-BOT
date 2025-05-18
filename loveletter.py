@@ -43,7 +43,7 @@ class LoveLetter(commands.Cog):
         self.verified_role_id = 1371885746415341648
         self.reveal_emoji = "🎀"
         self.reaction_threshold = 5
-        self.sent_messages = {}  # message_id: (sender_id, recipient_id)
+        self.sent_messages = {}
 
     @app_commands.command(name="loveletter", description="Send a secret love letter anonymously.")
     @app_commands.checks.has_role(1371885746415341648)
@@ -61,14 +61,12 @@ class LoveLetter(commands.Cog):
         embed.set_image(url="https://media.tenor.com/v4xmu4vSzQ4AAAAM/love-letter-love-letters.gif")
         embed.set_footer(text="Get 5 🎀 reactions to reveal who anonymously sent this letter")
 
-        sent = await channel.send(embed=embed, view=LoveLetterView(self.bot, message_id=None))
+        view = LoveLetterView(self.bot, message_id=None)
+        sent = await channel.send(embed=embed, view=view)
         await sent.add_reaction(self.reveal_emoji)
+
         self.sent_messages[sent.id] = (interaction.user.id, user.id)
-
-        # Now that we have the message ID, update the view with it
-        view = LoveLetterView(self.bot, sent.id)
-        await sent.edit(view=view)
-
+        view.message_id = sent.id  # update view's reference
         await interaction.response.send_message("💌 Your anonymous love letter has been sent!", ephemeral=True)
 
     @commands.Cog.listener()
