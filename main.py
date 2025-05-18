@@ -20,7 +20,8 @@ EXTENSIONS = [
     "verify_system",
     "music_commands",
     "nick6383_trivia",
-    "roast_joelle"  # ✅ added here
+    "roast_joelle",
+    "loveletter"
 ]
 
 @bot.event
