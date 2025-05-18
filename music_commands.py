@@ -8,7 +8,7 @@ import asyncio
 QUEUE = []
 VC_INSTANCES = {}
 MUSIC_ROLE_ID = 1373224259156967465
-ALLOWED_TEXT_CHANNEL_ID = 1371886282011312231
+ALLOWED_CHANNEL_ID = 1371886282011312231
 BLOCKED_CHANNEL_ID = 1318298515948048549
 
 class Music(commands.Cog):
@@ -19,11 +19,11 @@ class Music(commands.Cog):
         return any(role.id == MUSIC_ROLE_ID for role in interaction.user.roles)
 
     async def reject_if_wrong_channel(self, interaction):
-        if interaction.channel.id == BLOCKED_CHANNEL_ID:
-            await interaction.response.send_message("❌ Use the voice chat text channel for music commands.", ephemeral=True)
-            return True
-        if interaction.channel.id != ALLOWED_TEXT_CHANNEL_ID:
-            await interaction.response.send_message("❌ You can only use music commands in the VC text channel.", ephemeral=True)
+        if interaction.channel.id != ALLOWED_CHANNEL_ID:
+            await interaction.response.send_message(
+                "❌ You can only use this music command in the voice chat's text channel.",
+                ephemeral=True
+            )
             return True
         return False
 
@@ -79,6 +79,11 @@ class Music(commands.Cog):
 
         return urls, infos
 
+    async def send_to_music_channel(self, embed: discord.Embed):
+        channel = self.bot.get_channel(ALLOWED_CHANNEL_ID)
+        if channel:
+            await channel.send(embed=embed)
+
     async def play_next(self, guild_id):
         voice = VC_INSTANCES.get(guild_id)
         if not voice or not voice.is_connected():
@@ -102,10 +107,7 @@ class Music(commands.Cog):
             if 'thumbnail' in info:
                 embed.set_thumbnail(url=info['thumbnail'])
 
-            if voice.channel.category:
-                for ch in voice.channel.category.text_channels:
-                    await ch.send(embed=embed)
-                    return
+            await self.send_to_music_channel(embed)
         except Exception as e:
             print(f"Playback error: {e}")
             await asyncio.sleep(1)
@@ -144,13 +146,10 @@ class Music(commands.Cog):
                 )
                 if "thumbnail" in infos[0]:
                     embed.set_thumbnail(url=infos[0]["thumbnail"])
-                await interaction.response.send_message(embed=embed)
+                await self.send_to_music_channel(embed)
+                await interaction.response.send_message("✅ Added to queue.", ephemeral=True)
             else:
-                await interaction.response.send_message(embed=discord.Embed(
-                    title="⏳ Loading...",
-                    description="Attempting to fetch and play the track...",
-                    color=discord.Color.magenta()
-                ))
+                await interaction.response.send_message("⏳ Loading...", ephemeral=True)
                 await asyncio.sleep(1)
                 await self.play_next(interaction.guild.id)
         except Exception as e:
@@ -182,7 +181,8 @@ class Music(commands.Cog):
 
         if not QUEUE:
             embed = discord.Embed(title="📭 Queue is empty.", color=discord.Color.magenta())
-            await interaction.response.send_message(embed=embed)
+            await self.send_to_music_channel(embed)
+            await interaction.response.send_message("✅ Queue sent.", ephemeral=True)
             return
 
         embed = discord.Embed(
@@ -196,7 +196,8 @@ class Music(commands.Cog):
             uploader = info.get('uploader', 'Unknown')
             embed.add_field(name=f"{idx}. {title}", value=f"by {uploader}", inline=False)
 
-        await interaction.response.send_message(embed=embed)
+        await self.send_to_music_channel(embed)
+        await interaction.response.send_message("✅ Queue sent.", ephemeral=True)
 
     @app_commands.command(name="leave", description="Disconnect the bot from voice")
     async def leave(self, interaction: discord.Interaction):
@@ -214,7 +215,8 @@ class Music(commands.Cog):
                 description="The bot has left the voice channel.",
                 color=discord.Color.magenta()
             )
-            await interaction.response.send_message(embed=embed)
+            await self.send_to_music_channel(embed)
+            await interaction.response.send_message("✅ Left the voice channel.", ephemeral=True)
         else:
             await interaction.response.send_message("⚠️ I'm not in a voice channel.")
 
@@ -232,13 +234,18 @@ class Music(commands.Cog):
 
         random.shuffle(QUEUE)
         embed = discord.Embed(title="🔀 Queue Shuffled", description="The current queue has been shuffled.", color=discord.Color.magenta())
-        await interaction.response.send_message(embed=embed)
+        await self.send_to_music_channel(embed)
+        await interaction.response.send_message("✅ Queue shuffled.", ephemeral=True)
 
     @app_commands.command(name="musichelp", description="How to use music commands")
     async def musichelp(self, interaction: discord.Interaction):
+        if interaction.channel.id != BLOCKED_CHANNEL_ID:
+            await interaction.response.send_message("❌ You can only use /musichelp in #smile-and-refresh.", ephemeral=True)
+            return
+
         embed = discord.Embed(
             title="🎵 Music Help",
-            description="To use music commands, join a voice channel and then use `/play`, `/queue`, etc. inside the voice chat’s linked text channel only.",
+            description="To use music commands, join a voice channel and type in the voice channel’s chat room.",
             color=discord.Color.magenta()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
