@@ -20,7 +20,7 @@ EXTENSIONS = [
     "verify_system",
     "music_commands",
     "nick6383_trivia",
-    "roast_joelle"
+    "roast_joelle",
     "roast_valentine",
     "loveletter"
 ]
