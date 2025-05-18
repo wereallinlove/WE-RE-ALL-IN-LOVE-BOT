@@ -1,5 +1,3 @@
-# music_commands.py — slash command version
-
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -22,9 +20,9 @@ class Music(commands.Cog):
     async def ensure_voice(self, interaction):
         if not interaction.user.voice:
             await interaction.response.send_message(embed=discord.Embed(
-                    title="❌ You must be in a voice channel",
-                    color=discord.Color.magenta()
-                ), ephemeral=True)
+                title="❌ You must be in a voice channel",
+                color=discord.Color.magenta()
+            ), ephemeral=True)
             return None
 
         voice = interaction.guild.voice_client
@@ -37,27 +35,39 @@ class Music(commands.Cog):
             return voice
         except discord.ClientException:
             await interaction.response.send_message(embed=discord.Embed(
-                    title="⚠️ Already connected to a voice channel",
-                    color=discord.Color.magenta()
-                ), ephemeral=True)
+                title="⚠️ Already connected to a voice channel",
+                color=discord.Color.magenta()
+            ), ephemeral=True)
             return None
 
     def get_stream_url(self, query):
-        # Updated to handle playlists properly
         ydl_opts = {
             'format': 'bestaudio/best',
             'quiet': True,
-                        'default_search': 'auto'
+            'default_search': 'auto',
+            'extract_flat': False,
+            'noplaylist': False,
+            'playlistend': 50
         }
+
+        urls, infos = [], []
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(query, download=False)
-            entries = []
-            if 'entries' in info:
-                entries = info['entries']
-            else:
-                entries = [info]
-            urls = [entry['url'] for entry in entries if 'url' in entry]
-            return urls, entries
+            try:
+                info = ydl.extract_info(query, download=False)
+                entries = info.get('entries', [info])
+                for entry in entries:
+                    try:
+                        if entry and 'url' in entry:
+                            urls.append(entry['url'])
+                            infos.append(entry)
+                    except Exception as sub_error:
+                        print(f"Skipping bad track: {sub_error}")
+            except Exception as main_error:
+                print(f"Failed to extract playlist info: {main_error}")
+                return [], []
+
+        return urls, infos
 
     async def play_next(self, guild_id):
         voice = VC_INSTANCES.get(guild_id)
@@ -105,6 +115,11 @@ class Music(commands.Cog):
         try:
             urls, infos = self.get_stream_url(query)
             if not urls:
+                await interaction.response.send_message(embed=discord.Embed(
+                    title="⚠️ No playable tracks found.",
+                    description="The playlist may contain removed/private tracks.",
+                    color=discord.Color.magenta()
+                ))
                 return
 
             was_playing = voice.is_playing()
@@ -142,9 +157,9 @@ class Music(commands.Cog):
             await interaction.response.send_message("⏭️ Skipped.")
         else:
             await interaction.response.send_message(embed=discord.Embed(
-                    title="⚠️ Nothing is playing",
-                    color=discord.Color.magenta()
-                ))
+                title="⚠️ Nothing is playing",
+                color=discord.Color.magenta()
+            ))
 
     @app_commands.command(name="queue", description="Show the current SoundCloud queue")
     async def queue_cmd(self, interaction: discord.Interaction):
