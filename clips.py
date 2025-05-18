@@ -21,18 +21,15 @@ class Clips(commands.Cog):
         caption: str = "",
         featuring: discord.User = None
     ):
-        # Check role
         if not any(role.id == self.clips_role_id for role in interaction.user.roles):
             await interaction.response.send_message("❌ You don’t have permission to post clips.", ephemeral=True)
             return
 
-        # Get target channel
         channel = self.bot.get_channel(self.clips_channel_id)
         if not channel:
             await interaction.response.send_message("❌ Clips channel not found.", ephemeral=True)
             return
 
-        # Try fetching video from linked message
         files = []
         has_video = False
 
@@ -56,14 +53,12 @@ class Clips(commands.Cog):
             await interaction.response.send_message("❌ No video found in the provided message.", ephemeral=True)
             return
 
-        # Compose content
-        content = f"🎬 **New Clip Uploaded**\n📤 Submitted by: {interaction.user.mention}"
+        content = f"🎬 Submitted by: {interaction.user.mention}"
         if featuring:
             content += f"\n🎭 Featuring: {featuring.mention}"
         if caption:
             content += f"\n📝 {caption}"
 
-        # Send video message
         await channel.send(content, files=files)
         await interaction.response.send_message("✅ Your clip has been posted!", ephemeral=True)
 
