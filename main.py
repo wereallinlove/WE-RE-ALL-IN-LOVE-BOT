@@ -19,7 +19,8 @@ async def on_ready():
 EXTENSIONS = [
     "verify_system",
     "music_commands",
-    "nick6383_trivia"
+    "nick6383_trivia",
+    "roast_joelle"  # ✅ added here
 ]
 
 @bot.event
