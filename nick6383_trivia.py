@@ -372,7 +372,7 @@ class TriviaView(View):
 
         for child in self.children:
             child.disabled = True
-        await interaction.followup.send(embed=embed_result)
+        await interaction.edit_original_response(view=self)
 
         if choice == self.correct:
             embed = discord.Embed(title="✅ Correct!", description=f"You chose **{choice}**.\n\nYou got it right!", color=0x2ecc71)
