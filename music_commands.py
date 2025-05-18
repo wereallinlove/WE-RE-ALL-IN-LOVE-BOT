@@ -21,7 +21,10 @@ class Music(commands.Cog):
 
     async def ensure_voice(self, interaction):
         if not interaction.user.voice:
-            await interaction.response.send_message("❌ You must be in a voice channel.", ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(
+                    title="❌ You must be in a voice channel",
+                    color=discord.Color.magenta()
+                ), ephemeral=True)
             return None
 
         voice = interaction.guild.voice_client
@@ -33,21 +36,28 @@ class Music(commands.Cog):
             VC_INSTANCES[interaction.guild.id] = voice
             return voice
         except discord.ClientException:
-            await interaction.response.send_message("⚠️ Already connected to a voice channel.", ephemeral=True)
+            await interaction.response.send_message(embed=discord.Embed(
+                    title="⚠️ Already connected to a voice channel",
+                    color=discord.Color.magenta()
+                ), ephemeral=True)
             return None
 
     def get_stream_url(self, query):
+        # Updated to handle playlists properly
         ydl_opts = {
             'format': 'bestaudio/best',
             'quiet': True,
-            'noplaylist': True,
-            'default_search': 'auto'
+                        'default_search': 'auto'
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(query, download=False)
+            entries = []
             if 'entries' in info:
-                info = info['entries'][0]
-            return [info['url']], [info]
+                entries = info['entries']
+            else:
+                entries = [info]
+            urls = [entry['url'] for entry in entries if 'url' in entry]
+            return urls, entries
 
     async def play_next(self, guild_id):
         voice = VC_INSTANCES.get(guild_id)
@@ -83,7 +93,7 @@ class Music(commands.Cog):
             await asyncio.sleep(1)
             await self.play_next(guild_id)
 
-    @app_commands.command(name="play", description="Play a song from YouTube")
+    @app_commands.command(name="play", description="Play a song or playlist from SoundCloud")
     async def play(self, interaction: discord.Interaction, query: str):
         if not self.has_music_role(interaction):
             return
@@ -111,7 +121,11 @@ class Music(commands.Cog):
                     embed.set_thumbnail(url=infos[0]["thumbnail"])
                 await interaction.response.send_message(embed=embed)
             else:
-                await interaction.response.send_message("⏳ Loading track...")
+                await interaction.response.send_message(embed=discord.Embed(
+                    title="⏳ Loading...",
+                    description="Attempting to fetch and play the track...",
+                    color=discord.Color.magenta()
+                ))
                 await asyncio.sleep(1)
                 await self.play_next(interaction.guild.id)
         except Exception as e:
@@ -127,9 +141,12 @@ class Music(commands.Cog):
             voice.stop()
             await interaction.response.send_message("⏭️ Skipped.")
         else:
-            await interaction.response.send_message("⚠️ Nothing is playing.")
+            await interaction.response.send_message(embed=discord.Embed(
+                    title="⚠️ Nothing is playing",
+                    color=discord.Color.magenta()
+                ))
 
-    @app_commands.command(name="queue", description="Show the current queue")
+    @app_commands.command(name="queue", description="Show the current SoundCloud queue")
     async def queue_cmd(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
             return
@@ -170,7 +187,7 @@ class Music(commands.Cog):
         else:
             await interaction.response.send_message("⚠️ I'm not in a voice channel.")
 
-    @app_commands.command(name="shuffle", description="Shuffle the current queue")
+    @app_commands.command(name="shuffle", description="Shuffle the current SoundCloud queue")
     async def shuffle(self, interaction: discord.Interaction):
         if not self.has_music_role(interaction):
             return
