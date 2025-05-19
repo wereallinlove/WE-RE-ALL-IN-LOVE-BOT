@@ -7,9 +7,16 @@ import random
 class MinesGame(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.games = {}
 
-    @app_commands.command(name="mines")
+    @commands.Cog.listener()
+    async def on_ready(self):
+        try:
+            synced = await self.bot.tree.sync()
+            print(f"Synced {len(synced)} commands.")
+        except Exception as e:
+            print(f"Failed to sync commands: {e}")
+
+    @app_commands.command(name="mines", description="Start a Mines game with a chosen number of bombs.")
     @app_commands.describe(mines="Number of mines to place (1–24)")
     async def mines(self, interaction: discord.Interaction, mines: int):
         allowed_channel = 1373112868249145485
@@ -26,27 +33,27 @@ class MinesGame(commands.Cog):
 
         grid_size = 25
         bomb_positions = random.sample(range(grid_size), mines)
-        revealed = set()
 
         class TileView(discord.ui.View):
             def __init__(self):
                 super().__init__(timeout=None)
                 self.revealed = set()
                 self.stopped = False
+                self.tiles = []
 
                 for i in range(grid_size):
                     row = i // 5
                     col = i % 5
-                    self.add_item(self.TileButton(index=i, row=row, col=col))
+                    button = self.TileButton(index=i, row=row)
+                    self.tiles.append(button)
+                    self.add_item(button)
 
                 self.add_item(self.CashOutButton())
 
             class TileButton(discord.ui.Button):
-                def __init__(self, index, row, col):
+                def __init__(self, index, row):
                     super().__init__(style=discord.ButtonStyle.secondary, label="⬛", row=row)
                     self.index = index
-                    self.row_pos = row
-                    self.col_pos = col
 
                 async def callback(self, interaction: discord.Interaction):
                     if self.index in self.view.revealed or self.view.stopped:
@@ -58,21 +65,24 @@ class MinesGame(commands.Cog):
                         self.label = "💥"
                         self.style = discord.ButtonStyle.danger
                         self.disabled = True
+                        self.view.stopped = True
+                        for tile in self.view.tiles:
+                            tile.disabled = True
+                            if tile.index in bomb_positions:
+                                tile.label = "💣"
+                            elif tile.index in self.view.revealed:
+                                tile.label = "❎"
                         for child in self.view.children:
                             if isinstance(child, discord.ui.Button):
                                 child.disabled = True
-                                if hasattr(child, 'index') and child.index in bomb_positions:
-                                    child.label = "💣"
                         await interaction.response.edit_message(
-                            content=None,
                             embed=discord.Embed(
                                 title="BOOM!",
-                                description=f"You hit a bomb after **{len(self.view.revealed)-1}** safe clicks.",
+                                description=f"You hit a bomb after **{len(self.view.revealed) - 1}** safe clicks.",
                                 color=discord.Color.red()
                             ),
                             view=self.view
                         )
-                        self.view.stopped = True
                     else:
                         self.label = "❎"
                         self.style = discord.ButtonStyle.secondary
@@ -87,14 +97,17 @@ class MinesGame(commands.Cog):
                     if self.view.stopped:
                         return await interaction.response.defer()
 
+                    self.view.stopped = True
+                    for tile in self.view.tiles:
+                        tile.disabled = True
+                        if tile.index in bomb_positions:
+                            tile.label = "💣"
+                        elif tile.index in self.view.revealed:
+                            tile.label = "❎"
                     for child in self.view.children:
                         if isinstance(child, discord.ui.Button):
                             child.disabled = True
-                            if hasattr(child, 'index') and child.index in bomb_positions:
-                                child.label = "💣"
-
                     await interaction.response.edit_message(
-                        content=None,
                         embed=discord.Embed(
                             title="You Cashed Out!",
                             description=f"You safely clicked **{len(self.view.revealed)}** tiles.",
@@ -102,7 +115,6 @@ class MinesGame(commands.Cog):
                         ),
                         view=self.view
                     )
-                    self.view.stopped = True
 
         embed = discord.Embed(
             title=f"{interaction.user.display_name} started a Mines game",
