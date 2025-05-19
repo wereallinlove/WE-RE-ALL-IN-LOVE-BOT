@@ -23,6 +23,7 @@ EXTENSIONS = [
     "roast_joelle",
     "roast_valentine",
     "loveletter",
+    "quote_command",
     "clips"
 ]
 
