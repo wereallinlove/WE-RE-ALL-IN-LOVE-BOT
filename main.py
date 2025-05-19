@@ -29,7 +29,8 @@ EXTENSIONS = [
     "duel_command",
     "nick6383_triviaduel",
     "expose_command",
-    "fortune_command"
+    "fortune_command",
+    "mines_game.py"
 ]
 
 @bot.event
