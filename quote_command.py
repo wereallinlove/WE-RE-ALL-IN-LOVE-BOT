@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 
 QUOTE_CHANNEL_ID = 1373837923430170684
 QUOTE_ROLE_ID = 1373837610249752706
-EMBED_COLOR = discord.Color.from_rgb(111, 57, 88)  # #6F3958
+EMBED_COLOR = discord.Color.from_rgb(231, 84, 128)  # #E75480
 
 class Quote(commands.Cog):
     def __init__(self, bot):
@@ -28,7 +28,7 @@ class Quote(commands.Cog):
             author = message.author
             content = message.content
 
-            # Convert UTC timestamp to EST manually (UTC-4)
+            # EST conversion
             est_time = message.created_at.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=-4)))
             formatted_time = est_time.strftime("%B %d, %Y at %I:%M %p")
 
@@ -37,7 +37,10 @@ class Quote(commands.Cog):
                 description=content,
                 color=EMBED_COLOR
             )
-            embed.set_footer(text=f"— (@{author.display_name}), {formatted_time}\nWE'RE ALL IN LOVE {datetime.now().year}")
+            embed.set_thumbnail(url=author.display_avatar.url)
+            embed.set_footer(
+                text=f"— ({author.mention}), {formatted_time}\nWE'RE ALL IN LOVE {datetime.now().year}"
+            )
 
             if message.attachments:
                 for attachment in message.attachments:
@@ -49,7 +52,8 @@ class Quote(commands.Cog):
                         break
 
             quote_channel = self.bot.get_channel(QUOTE_CHANNEL_ID)
-            await quote_channel.send(embed=embed)
+
+            await quote_channel.send(content=author.mention, embed=embed)
             await interaction.response.send_message("Quote posted.", ephemeral=True)
 
         except Exception as e:
