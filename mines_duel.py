@@ -1,4 +1,3 @@
-
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -46,128 +45,15 @@ class MinesDuel(commands.Cog):
 
         embed = discord.Embed(
             title=f"{challenger.display_name} challenged {challenged.display_name} to a Mines Duel!",
-            description=f"{challenged.mention}, you have 1 hour to accept.
-Each player will try to uncover as many safe tiles as possible with **{mines}** bombs. First to hit a bomb loses.",
+            description=(
+                f"{challenged.mention}, you have 1 hour to accept.
+"
+                f"Each player will try to uncover as many safe tiles as possible with **{mines}** bombs. "
+                f"First to hit a bomb loses."
+            ),
             color=discord.Color.magenta()
         )
         await interaction.response.send_message(embed=embed, view=AcceptView())
-
-async def start_duel(interaction, challenger, challenged, mines):
-    grid_size = 25
-
-    class DuelView(discord.ui.View):
-        def __init__(self, player, opponent, callback):
-            super().__init__(timeout=None)
-            self.player = player
-            self.opponent = opponent
-            self.callback = callback
-            self.revealed = set()
-            self.bombs = set(random.sample(range(grid_size), mines))
-            self.tiles = []
-            self.finished = False
-
-            for i in range(grid_size):
-                button = self.TileButton(index=i)
-                self.tiles.append(button)
-                self.add_item(button)
-
-            self.add_item(self.CashOutButton())
-
-        class TileButton(discord.ui.Button):
-            def __init__(self, index):
-                super().__init__(style=discord.ButtonStyle.secondary, label="⬛", row=index // 5)
-                self.index = index
-
-            async def callback(self, interaction):
-                if self.disabled or self.view.finished or interaction.user.id != self.view.player.id:
-                    return await interaction.response.defer()
-
-                self.view.revealed.add(self.index)
-                if self.index in self.view.bombs:
-                    self.label = "💥"
-                    self.style = discord.ButtonStyle.danger
-                    self.view.finished = True
-                    for btn in self.view.tiles:
-                        btn.disabled = True
-                        if btn.index in self.view.bombs:
-                            btn.label = "💣"
-                        elif btn.index in self.view.revealed:
-                            btn.label = "❎"
-                    await interaction.response.edit_message(
-                        embed=discord.Embed(
-                            title=f"{self.view.player.display_name} exploded!",
-                            description=f"You hit a bomb after **{len(self.view.revealed) - 1}** safe tiles.",
-                            color=discord.Color.red()
-                        ),
-                        view=self.view
-                    )
-                    self.view.callback(self.view.player, len(self.view.revealed) - 1, True)
-                else:
-                    self.label = "❎"
-                    self.style = discord.ButtonStyle.secondary
-                    self.disabled = True
-                    await interaction.response.edit_message(view=self.view)
-
-        class CashOutButton(discord.ui.Button):
-            def __init__(self):
-                super().__init__(label="Cash Out", style=discord.ButtonStyle.success, row=5)
-
-            async def callback(self, interaction):
-                if interaction.user.id != self.view.player.id or self.view.finished:
-                    return await interaction.response.defer()
-
-                self.view.finished = True
-                for btn in self.view.tiles:
-                    btn.disabled = True
-                    if btn.index in self.view.bombs:
-                        btn.label = "💣"
-                    elif btn.index in self.view.revealed:
-                        btn.label = "❎"
-
-                await interaction.response.edit_message(
-                    embed=discord.Embed(
-                        title=f"{self.view.player.display_name} cashed out!",
-                        description=f"You safely uncovered **{len(self.view.revealed)}** tiles.",
-                        color=discord.Color.green()
-                    ),
-                    view=self.view
-                )
-                self.view.callback(self.view.player, len(self.view.revealed), False)
-
-    result = {}
-
-    async def end_game(player, score, exploded):
-        result[player.id] = (player.display_name, score, exploded)
-        if len(result) == 2:
-            p1, p2 = list(result.values())
-            if p1[2] and not p2[2]:
-                desc = f"**{p2[0]}** wins! {p1[0]} hit a bomb."
-            elif p2[2] and not p1[2]:
-                desc = f"**{p1[0]}** wins! {p2[0]} hit a bomb."
-            elif p1[1] > p2[1]:
-                desc = f"**{p1[0]}** wins by {p1[1]} to {p2[1]}!"
-            elif p2[1] > p1[1]:
-                desc = f"**{p2[0]}** wins by {p2[1]} to {p1[1]}!"
-            else:
-                desc = f"Draw! Both uncovered **{p1[1]}** tiles."
-
-            await interaction.followup.send(embed=discord.Embed(
-                title="Mines Duel Results",
-                description=desc,
-                color=discord.Color.magenta()
-            ))
-
-    await interaction.followup.send(embed=discord.Embed(
-        title=f"{challenger.display_name}'s Game",
-        description="Click to reveal safe tiles or cash out.",
-        color=discord.Color.magenta()
-    ), view=DuelView(challenger, challenged, end_game))
-
-    await interaction.followup.send(embed=discord.Embed(
-        title=f"{challenged.display_name}'s Game",
-        description="Click to reveal safe tiles or cash out.",
-        color=discord.Color.magenta()
-    ), view=DuelView(challenged, challenger, end_game))
 
 async def setup(bot):
     await bot.add_cog(MinesDuel(bot))
