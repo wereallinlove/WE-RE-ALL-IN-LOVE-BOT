@@ -27,6 +27,7 @@ EXTENSIONS = [
     "clips",
     "fight_command",
     "duel_command",
+    "nick6383_triviaduel",
     "expose_command"
 ]
 
