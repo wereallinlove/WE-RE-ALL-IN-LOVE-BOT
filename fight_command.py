@@ -5,7 +5,7 @@ import asyncio
 import random
 
 FIGHT_ROLE_ID = 1371885746415341648
-FIGHT_CHANNEL_ID = 1318298515948048549
+FIGHT_CHANNEL_ID = 1373112868249145485  # updated to #games
 ADMIN_ROLE_ID = 1371681883796017222
 EMBED_COLOR = discord.Color.from_rgb(231, 84, 128)
 
@@ -18,7 +18,7 @@ class Fight(commands.Cog):
     @app_commands.checks.has_role(FIGHT_ROLE_ID)
     async def fight(self, interaction: discord.Interaction, user: discord.Member):
         if interaction.channel.id != FIGHT_CHANNEL_ID:
-            await interaction.response.send_message("You can only use this command in the fight channel.", ephemeral=True)
+            await interaction.response.send_message("You can only use this command in the #games channel.", ephemeral=True)
             return
 
         if user.id == interaction.user.id:
