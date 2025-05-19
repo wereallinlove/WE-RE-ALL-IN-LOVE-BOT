@@ -26,7 +26,6 @@ EXTENSIONS = [
     "quote_command",
     "clips",
     "fight_command",
-    "expose_command",
     "burn_command"
 ]
 
