@@ -7,6 +7,8 @@ import asyncio
 
 TRIVIA_CHANNEL_ID = 1373112868249145485
 VERIFIED_ROLE_ID = 1371885746415341648
+DUEL_TIMEOUT = 30
+MAX_ROUNDS = 5
 
 SONG_DATA = {
     "From the Dirt": [
@@ -349,7 +351,6 @@ class AcceptView(discord.ui.View):
         duel = DuelTriviaView(self.challenger, self.opponent, self.rounds)
         await duel.start(interaction.channel)
 
-
 class DuelTriviaButton(Button):
     def __init__(self, label, correct, duel_view):
         super().__init__(label=label, style=discord.ButtonStyle.secondary)
@@ -389,7 +390,6 @@ class DuelTriviaButton(Button):
         else:
             await self.duel_view.send_next_question(interaction.channel)
 
-
 class DuelTriviaView(View):
     def __init__(self, player1, player2, rounds):
         super().__init__(timeout=None)
@@ -398,7 +398,6 @@ class DuelTriviaView(View):
         self.max_rounds = rounds
         self.current_round = 0
         self.answered = False
-        self.message = None
         self.scores = {player1.id: 0, player2.id: 0}
 
     async def start(self, channel):
@@ -410,9 +409,7 @@ class DuelTriviaView(View):
 
         song_title = random.choice(list(SONG_DATA.keys()))
         lyric = random.choice(SONG_DATA[song_title])
-        other_titles = list(SONG_DATA.keys())
-        other_titles.remove(song_title)
-        options = random.sample(other_titles, 3) + [song_title]
+        options = random.sample([k for k in SONG_DATA if k != song_title], 3) + [song_title]
         random.shuffle(options)
 
         embed = discord.Embed(
@@ -425,31 +422,27 @@ class DuelTriviaView(View):
         for option in options:
             self.add_item(DuelTriviaButton(option, song_title, self))
 
-        self.message = await channel.send(embed=embed, view=self)
+        await channel.send(embed=embed, view=self)
 
     async def show_final_results(self, channel):
-        p1 = self.player1.display_name
-        p2 = self.player2.display_name
         s1 = self.scores[self.player1.id]
         s2 = self.scores[self.player2.id]
-
         if s1 > s2:
-            winner = f"🏆 **{p1}** wins the duel!"
+            result = f"🏆 **{self.player1.display_name}** wins the duel!"
         elif s2 > s1:
-            winner = f"🏆 **{p2}** wins the duel!"
+            result = f"🏆 **{self.player2.display_name}** wins the duel!"
         else:
-            winner = "🤝 It's a tie!"
+            result = "🤝 It's a tie!"
 
-        result_embed = discord.Embed(
+        embed = discord.Embed(
             title="📊 Final Results",
-            description=f"{p1}: **{s1}**
-{p2}: **{s2}**
+            description=f"{self.player1.display_name}: **{s1}**
+{self.player2.display_name}: **{s2}**
 
-{winner}",
+{result}",
             color=discord.Color.green()
         )
-        await channel.send(embed=result_embed)
-
+        await channel.send(embed=embed)
 
 class NickDuel(commands.Cog):
     def __init__(self, bot):
@@ -461,7 +454,7 @@ class NickDuel(commands.Cog):
         if interaction.channel.id != TRIVIA_CHANNEL_ID:
             await interaction.response.send_message("❌ Wrong channel.", ephemeral=True)
             return
-        if VERIFIED_ROLE_ID not in [role.id for role in interaction.user.roles]:
+        if VERIFIED_ROLE_ID not in [r.id for r in interaction.user.roles]:
             await interaction.response.send_message("❌ You are not verified.", ephemeral=True)
             return
         if rounds < 1 or rounds > 5:
@@ -473,12 +466,10 @@ class NickDuel(commands.Cog):
 
         embed = discord.Embed(
             title="🎤 Nick6383 Trivia Duel Challenge!",
-            description=(
-                f"{user.mention}, you’ve been challenged to a **{rounds}-round** Nick6383 Trivia Duel by {interaction.user.mention}.
+            description=(f"{user.mention}, you’ve been challenged to a **{rounds}-round** Nick6383 Trivia Duel "
+                         f"by {interaction.user.mention}.
 
-"
-                "Click **Accept Duel** to begin."
-            ),
+Click **Accept Duel** to begin."),
             color=discord.Color.pink()
         )
         await interaction.response.send_message(embed=embed, view=AcceptView(interaction.user, user, rounds))
