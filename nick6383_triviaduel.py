@@ -334,6 +334,24 @@ SONG_DATA = {
     ]
 }
 
+
+class AcceptView(discord.ui.View):
+    def __init__(self, challenger, opponent, rounds):
+        super().__init__(timeout=60)
+        self.challenger = challenger
+        self.opponent = opponent
+        self.rounds = rounds
+
+    @discord.ui.button(label="Accept Duel", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            await interaction.response.send_message("You're not the one being challenged.", ephemeral=True)
+            return
+
+        await interaction.message.delete()
+        duel = DuelTriviaView(self.challenger, self.opponent, self.rounds)
+        await duel.start(interaction.channel)
+
 class DuelTriviaButton(Button):
     def __init__(self, label, correct, duel_view):
         super().__init__(label=label, style=discord.ButtonStyle.secondary)
@@ -450,7 +468,15 @@ class NickDuel(commands.Cog):
             await interaction.response.send_message("You can't duel yourself.", ephemeral=True)
             return
 
-        await interaction.response.send_message(f"{user.mention}, you’ve been challenged to a **{rounds}-round Nick6383 Trivia Duel** by {interaction.user.mention}!", ephemeral=False)
+        embed = discord.Embed(
+            title="🎤 Nick6383 Trivia Duel Challenge!",
+            description=(f"{user.mention}, you’ve been challenged to a **{rounds}-round** Nick6383 Trivia Duel "
+                         f"by {interaction.user.mention}.
+
+Click **Accept Duel** to begin."),
+            color=discord.Color.pink()
+        )
+        await interaction.response.send_message(embed=embed, view=AcceptView(interaction.user, user, rounds))
 
         await asyncio.sleep(2)
 
