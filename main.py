@@ -25,8 +25,7 @@ EXTENSIONS = [
     "loveletter",
     "quote_command",
     "clips",
-    "fight_command",
-    "burn_command"
+    "fight_command"
 ]
 
 @bot.event
