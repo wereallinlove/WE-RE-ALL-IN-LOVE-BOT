@@ -28,7 +28,8 @@ EXTENSIONS = [
     "fight_command",
     "duel_command",
     "nick6383_triviaduel",
-    "expose_command"
+    "expose_command",
+    "fortune_command"
 ]
 
 @bot.event
