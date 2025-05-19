@@ -7,8 +7,6 @@ import asyncio
 
 TRIVIA_CHANNEL_ID = 1373112868249145485
 VERIFIED_ROLE_ID = 1371885746415341648
-DUEL_TIMEOUT = 30
-MAX_ROUNDS = 5
 
 SONG_DATA = {
     "From the Dirt": [
@@ -334,6 +332,24 @@ SONG_DATA = {
     ]
 }
 
+class AcceptView(discord.ui.View):
+    def __init__(self, challenger, opponent, rounds):
+        super().__init__(timeout=60)
+        self.challenger = challenger
+        self.opponent = opponent
+        self.rounds = rounds
+
+    @discord.ui.button(label="Accept Duel", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            await interaction.response.send_message("You're not the one being challenged.", ephemeral=True)
+            return
+
+        await interaction.message.delete()
+        duel = DuelTriviaView(self.challenger, self.opponent, self.rounds)
+        await duel.start(interaction.channel)
+
+
 class DuelTriviaButton(Button):
     def __init__(self, label, correct, duel_view):
         super().__init__(label=label, style=discord.ButtonStyle.secondary)
@@ -347,33 +363,36 @@ class DuelTriviaButton(Button):
         if self.duel_view.answered:
             await interaction.response.send_message("Too late, someone already answered!", ephemeral=True)
             return
+
         self.duel_view.answered = True
+        responder = interaction.user
 
         if self.label == self.correct:
-            self.duel_view.scores[interaction.user.id] += 1
-            winner = interaction.user
+            self.duel_view.scores[responder.id] += 1
+            winner_text = f"🏆 **{responder.display_name}** wins round {self.duel_view.current_round + 1}!"
         else:
-            winner = self.duel_view.player1 if interaction.user.id == self.duel_view.player2.id else self.duel_view.player2
+            other = self.duel_view.player1 if responder.id == self.duel_view.player2.id else self.duel_view.player2
+            winner_text = f"❌ Wrong! Point goes to **{other.display_name}**"
 
         self.duel_view.current_round += 1
 
-        result_embed = discord.Embed(
-            title=f"🎯 {interaction.user.display_name} answered!",
-            description=f"Correct answer: **{self.correct}**\n\n🏆 **{winner.display_name}** wins round {self.duel_view.current_round}!",
+        loading_embed = discord.Embed(
+            title="Next question loading...",
+            description=winner_text,
             color=discord.Color.pink()
         )
-        await interaction.response.edit_message(embed=result_embed, view=None)
-
+        await interaction.channel.send(embed=loading_embed)
         await asyncio.sleep(3)
 
         if self.duel_view.current_round >= self.duel_view.max_rounds:
-            await self.duel_view.show_final_results(interaction)
+            await self.duel_view.show_final_results(interaction.channel)
         else:
-            await self.duel_view.send_next_question(interaction)
+            await self.duel_view.send_next_question(interaction.channel)
+
 
 class DuelTriviaView(View):
     def __init__(self, player1, player2, rounds):
-        super().__init__(timeout=DUEL_TIMEOUT)
+        super().__init__(timeout=None)
         self.player1 = player1
         self.player2 = player2
         self.max_rounds = rounds
@@ -382,10 +401,10 @@ class DuelTriviaView(View):
         self.message = None
         self.scores = {player1.id: 0, player2.id: 0}
 
-    async def start(self, interaction):
-        await self.send_next_question(interaction)
+    async def start(self, channel):
+        await self.send_next_question(channel)
 
-    async def send_next_question(self, interaction):
+    async def send_next_question(self, channel):
         self.clear_items()
         self.answered = False
 
@@ -397,7 +416,7 @@ class DuelTriviaView(View):
         random.shuffle(options)
 
         embed = discord.Embed(
-            title=f"Round {self.current_round + 1}",
+            title=f"🎤 Nick6383 Trivia — Round {self.current_round + 1}",
             description=f"*{lyric}*",
             color=discord.Color.pink()
         )
@@ -406,29 +425,31 @@ class DuelTriviaView(View):
         for option in options:
             self.add_item(DuelTriviaButton(option, song_title, self))
 
-        self.message = await interaction.channel.send(embed=embed, view=self)
+        self.message = await channel.send(embed=embed, view=self)
 
-    async def show_final_results(self, interaction):
-        p1_score = self.scores[self.player1.id]
-        p2_score = self.scores[self.player2.id]
+    async def show_final_results(self, channel):
+        p1 = self.player1.display_name
+        p2 = self.player2.display_name
+        s1 = self.scores[self.player1.id]
+        s2 = self.scores[self.player2.id]
 
-        if p1_score > p2_score:
-            winner_text = f"🏆 **{self.player1.display_name}** wins the duel!"
-        elif p2_score > p1_score:
-            winner_text = f"🏆 **{self.player2.display_name}** wins the duel!"
+        if s1 > s2:
+            winner = f"🏆 **{p1}** wins the duel!"
+        elif s2 > s1:
+            winner = f"🏆 **{p2}** wins the duel!"
         else:
-            winner_text = "🤝 It's a tie!"
+            winner = "🤝 It's a tie!"
 
-        final_embed = discord.Embed(
-            title="📊 Duel Results",
-            description=(
-                f"{self.player1.display_name}: **{p1_score}**\n"
-                f"{self.player2.display_name}: **{p2_score}**\n\n"
-                f"{winner_text}"
-            ),
+        result_embed = discord.Embed(
+            title="📊 Final Results",
+            description=f"{p1}: **{s1}**
+{p2}: **{s2}**
+
+{winner}",
             color=discord.Color.green()
         )
-        await interaction.channel.send(embed=final_embed)
+        await channel.send(embed=result_embed)
+
 
 class NickDuel(commands.Cog):
     def __init__(self, bot):
@@ -450,12 +471,17 @@ class NickDuel(commands.Cog):
             await interaction.response.send_message("You can't duel yourself.", ephemeral=True)
             return
 
-        await interaction.response.send_message(f"{user.mention}, you’ve been challenged to a **{rounds}-round Nick6383 Trivia Duel** by {interaction.user.mention}!", ephemeral=False)
+        embed = discord.Embed(
+            title="🎤 Nick6383 Trivia Duel Challenge!",
+            description=(
+                f"{user.mention}, you’ve been challenged to a **{rounds}-round** Nick6383 Trivia Duel by {interaction.user.mention}.
 
-        await asyncio.sleep(2)
-
-        duel_view = DuelTriviaView(interaction.user, user, rounds)
-        await duel_view.start(interaction)
+"
+                "Click **Accept Duel** to begin."
+            ),
+            color=discord.Color.pink()
+        )
+        await interaction.response.send_message(embed=embed, view=AcceptView(interaction.user, user, rounds))
 
 async def setup(bot):
     await bot.add_cog(NickDuel(bot))
