@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timezone, timedelta
+import random  # ✅ THIS FIXES YOUR ERROR
 
 EXPOSE_ROLE_ID = 1371885746415341648
 EXPOSE_CHANNEL_ID = 1318298515948048549
@@ -26,7 +27,13 @@ class Expose(commands.Cog):
                 continue
             if len(message.content) < 8:
                 continue
-            if any(x in message.content.lower() for x in ["i want", "daddy", "ride", "moan", "feet", "bark", "lick", "piss", "shit", "fuck", "sex", "onlyfans", "ex", "bitch", "kill", "dead", "hate", "nsfw", "horny", "dream", "obsessed", "kneel", "bite", "choke", "step on", "ruin", "slave", "leash", "panties", "wet", "thirst", "please", "unholy", "sin", "impale", "slut", "raw", "breed", "hole", "scream", "pray", "desperate", "boyfriend", "girlfriend", "date", "nudes", "simp", "dilf", "mommy", "daddy issues"]):
+            if any(x in message.content.lower() for x in [
+                "i want", "daddy", "ride", "moan", "feet", "bark", "lick", "piss", "shit", "fuck", "sex", "onlyfans",
+                "ex", "bitch", "kill", "dead", "hate", "nsfw", "horny", "dream", "obsessed", "kneel", "bite", "choke",
+                "step on", "ruin", "slave", "leash", "panties", "wet", "thirst", "please", "unholy", "sin", "impale",
+                "slut", "raw", "breed", "hole", "scream", "pray", "desperate", "boyfriend", "girlfriend", "date",
+                "nudes", "simp", "dilf", "mommy", "daddy issues"
+            ]):
                 messages.append(message)
             elif len(message.content.split()) >= 6:
                 messages.append(message)
