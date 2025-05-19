@@ -4,7 +4,7 @@ from discord.ext import commands
 import random
 
 DUEL_ROLE_ID = 1371885746415341648
-DUEL_CHANNEL_ID = 1318298515948048549
+DUEL_CHANNEL_ID = 1373112868249145485  # updated to #games
 EMBED_COLOR = discord.Color.from_rgb(231, 84, 128)
 
 class Duel(commands.Cog):
@@ -15,7 +15,7 @@ class Duel(commands.Cog):
     @app_commands.checks.has_role(DUEL_ROLE_ID)
     async def duel(self, interaction: discord.Interaction, user: discord.Member):
         if interaction.channel.id != DUEL_CHANNEL_ID:
-            await interaction.response.send_message("You can only use this command in the duel channel.", ephemeral=True)
+            await interaction.response.send_message("You can only use this command in the #games channel.", ephemeral=True)
             return
 
         if user.id == interaction.user.id:
