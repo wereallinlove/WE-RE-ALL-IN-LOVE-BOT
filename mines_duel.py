@@ -1,6 +1,4 @@
-# Add missing registration logic with cog_load for guaranteed sync
 
-final_minesduel_code = '''
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -10,11 +8,6 @@ import asyncio
 class MinesDuel(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    async def cog_load(self):
-        self.bot.tree.add_command(self.minesduel)
-        await self.bot.tree.sync()
-        print("Mines Duel command synced.")
 
     @app_commands.command(name="minesduel", description="Challenge someone to a Mines duel.")
     @app_commands.describe(user="The user to duel", mines="Number of mines to place (1–24)")
@@ -53,7 +46,8 @@ class MinesDuel(commands.Cog):
 
         embed = discord.Embed(
             title=f"{challenger.display_name} challenged {challenged.display_name} to a Mines Duel!",
-            description=f"{challenged.mention}, you have 1 hour to accept.\nEach player will try to uncover as many safe tiles as possible with **{mines}** bombs. First to hit a bomb loses.",
+            description=f"{challenged.mention}, you have 1 hour to accept.
+Each player will try to uncover as many safe tiles as possible with **{mines}** bombs. First to hit a bomb loses.",
             color=discord.Color.magenta()
         )
         await interaction.response.send_message(embed=embed, view=AcceptView())
@@ -177,11 +171,3 @@ async def start_duel(interaction, challenger, challenged, mines):
 
 async def setup(bot):
     await bot.add_cog(MinesDuel(bot))
-'''
-
-# Save final fixed file to ensure command registration
-file_path = "/mnt/data/mines_duel.py"
-with open(file_path, "w") as f:
-    f.write(final_minesduel_code)
-
-file_path
