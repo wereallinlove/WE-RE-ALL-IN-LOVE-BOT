@@ -28,32 +28,27 @@ class Quote(commands.Cog):
             author = message.author
             content = message.content
 
-            # EST conversion
+            # Convert to EST
             est_time = message.created_at.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=-4)))
             formatted_time = est_time.strftime("%B %d, %Y at %I:%M %p")
 
+            # Build embed
             embed = discord.Embed(
                 title=f"Quote from {author.display_name}",
                 description=content,
                 color=EMBED_COLOR
             )
             embed.set_thumbnail(url=author.display_avatar.url)
-            embed.set_footer(
-                text=f"— ({author.mention}), {formatted_time}\nWE'RE ALL IN LOVE {datetime.now().year}"
+
+            # Actual mention in embed body
+            embed.add_field(
+                name="",
+                value=f"— {author.mention}, {formatted_time}",
+                inline=False
             )
 
-            if message.attachments:
-                for attachment in message.attachments:
-                    if attachment.content_type and attachment.content_type.startswith("image/"):
-                        embed.set_image(url=attachment.url)
-                        break
-                    elif attachment.content_type and attachment.content_type.startswith("video/"):
-                        embed.set_thumbnail(url=attachment.url)
-                        break
-
             quote_channel = self.bot.get_channel(QUOTE_CHANNEL_ID)
-
-            await quote_channel.send(content=author.mention, embed=embed)
+            await quote_channel.send(embed=embed)
             await interaction.response.send_message("Quote posted.", ephemeral=True)
 
         except Exception as e:
