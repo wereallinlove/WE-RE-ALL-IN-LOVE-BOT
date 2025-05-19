@@ -1,8 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from datetime import datetime
-import pytz
+from datetime import datetime, timezone, timedelta
 
 QUOTE_CHANNEL_ID = 1373837923430170684
 QUOTE_ROLE_ID = 1373837610249752706
@@ -20,7 +19,6 @@ class Quote(commands.Cog):
             if len(parts) < 3:
                 raise ValueError("Invalid link format.")
 
-            guild_id = int(parts[-3])
             channel_id = int(parts[-2])
             message_id = int(parts[-1])
 
@@ -29,8 +27,10 @@ class Quote(commands.Cog):
 
             author = message.author
             content = message.content
-            timestamp = message.created_at.astimezone(pytz.timezone("America/New_York"))
-            formatted_time = timestamp.strftime("%B %d, %Y at %I:%M %p")
+
+            # Convert UTC timestamp to EST manually (UTC-4)
+            est_time = message.created_at.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=-4)))
+            formatted_time = est_time.strftime("%B %d, %Y at %I:%M %p")
 
             embed = discord.Embed(
                 title=f"Quote from {author.display_name}",
@@ -41,10 +41,10 @@ class Quote(commands.Cog):
 
             if message.attachments:
                 for attachment in message.attachments:
-                    if attachment.content_type.startswith("image/"):
+                    if attachment.content_type and attachment.content_type.startswith("image/"):
                         embed.set_image(url=attachment.url)
                         break
-                    elif attachment.content_type.startswith("video/"):
+                    elif attachment.content_type and attachment.content_type.startswith("video/"):
                         embed.set_thumbnail(url=attachment.url)
                         break
 
