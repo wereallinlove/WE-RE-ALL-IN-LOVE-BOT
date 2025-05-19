@@ -6,7 +6,8 @@ import random
 
 FIGHT_ROLE_ID = 1371885746415341648
 FIGHT_CHANNEL_ID = 1318298515948048549
-EMBED_COLOR = discord.Color.from_rgb(231, 84, 128)  # pink
+ADMIN_ROLE_ID = 1371681883796017222
+EMBED_COLOR = discord.Color.from_rgb(231, 84, 128)
 
 class Fight(commands.Cog):
     def __init__(self, bot):
@@ -34,7 +35,7 @@ class Fight(commands.Cog):
             description="Click the button below to accept. You have 30 minutes...",
             color=EMBED_COLOR
         )
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=False)
+        await interaction.response.send_message(embed=embed, view=view)
 
 class FightAcceptView(discord.ui.View):
     def __init__(self, challenger, target):
@@ -68,7 +69,17 @@ class FightAcceptView(discord.ui.View):
 
         await asyncio.sleep(6)
 
-        winner = random.choice([self.challenger, self.target])
+        # Check for admin bias
+        challenger_is_admin = any(role.id == ADMIN_ROLE_ID for role in self.challenger.roles)
+        target_is_admin = any(role.id == ADMIN_ROLE_ID for role in self.target.roles)
+
+        if challenger_is_admin and not target_is_admin:
+            winner = self.challenger if random.random() < 0.75 else self.target
+        elif target_is_admin and not challenger_is_admin:
+            winner = self.target if random.random() < 0.75 else self.challenger
+        else:
+            winner = random.choice([self.challenger, self.target])
+
         loser = self.target if winner == self.challenger else self.challenger
 
         final_embed = discord.Embed(
