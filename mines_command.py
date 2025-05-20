@@ -89,7 +89,7 @@ class MinesView(discord.ui.View):
         self.user_id = user_id
         for i in range(25):
             self.add_item(MinesButton(i, game, user_id, self))
-        self.add_item(CashOutButton(game, user_id))
+        self.add_item(CashOutButton(game, user_id))  # no row set — Discord auto-places
 
 class MinesButton(discord.ui.Button):
     def __init__(self, index: int, game: MinesGame, user_id: int, view: discord.ui.View):
@@ -125,7 +125,7 @@ class MinesButton(discord.ui.Button):
 
 class CashOutButton(discord.ui.Button):
     def __init__(self, game: MinesGame, user_id: int):
-        super().__init__(style=discord.ButtonStyle.success, label="Cash Out 💸", row=4)  # ✅ FIXED HERE
+        super().__init__(style=discord.ButtonStyle.success, label="Cash Out 💸")  # No row specified
         self.game = game
         self.user_id = user_id
 
