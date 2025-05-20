@@ -3,7 +3,6 @@ from discord.ext import commands
 from discord import app_commands
 import random
 
-# Restriction constants
 VERIFIED_ROLE_ID = 1371885746415341648
 ALLOWED_CHANNEL_ID = 1373112868249145485
 
@@ -59,11 +58,9 @@ class MinesCommand(commands.Cog):
     @app_commands.command(name="mines", description="Play a mines game with a 5x5 grid.")
     @app_commands.describe(bombs="How many bombs to place (1-24)")
     async def mines(self, interaction: discord.Interaction, bombs: int):
-        # Channel check
         if interaction.channel.id != ALLOWED_CHANNEL_ID:
             return await interaction.response.send_message("You can only use this command in the designated game channel.", ephemeral=True)
 
-        # Role check
         if not any(role.id == VERIFIED_ROLE_ID for role in interaction.user.roles):
             return await interaction.response.send_message("You don’t have permission to use this command.", ephemeral=True)
 
@@ -128,7 +125,7 @@ class MinesButton(discord.ui.Button):
 
 class CashOutButton(discord.ui.Button):
     def __init__(self, game: MinesGame, user_id: int):
-        super().__init__(style=discord.ButtonStyle.success, label="Cash Out 💸", row=5)
+        super().__init__(style=discord.ButtonStyle.success, label="Cash Out 💸", row=4)  # ✅ FIXED HERE
         self.game = game
         self.user_id = user_id
 
