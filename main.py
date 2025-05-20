@@ -30,7 +30,6 @@ EXTENSIONS = [
     "nick6383_triviaduel",
     "expose_command",
     "fortune_command",
-    "mines_duel",
     "hyperbeam_command"
 ]
 
