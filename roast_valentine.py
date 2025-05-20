@@ -3,16 +3,32 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+ROAST_CHANNEL_ID = 1318298515948048549
+VERIFIED_ROLE_ID = 1371885746415341648
+ADMIN_ROLE_ID = 1371681883796017222
+
 class RoastValentine(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.cooldowns = {}
 
     @app_commands.command(name="roastvalentine", description="Roast Valentine brutally and without mercy.")
-    @app_commands.checks.has_role(1371885746415341648)
+    @app_commands.checks.has_role(VERIFIED_ROLE_ID)
     async def roastvalentine(self, interaction: discord.Interaction):
-        if interaction.channel.id != 1318298515948048549:
+        if interaction.channel.id != ROAST_CHANNEL_ID:
             await interaction.response.send_message("❌ This command can only be used in the roast channel.", ephemeral=True)
             return
+
+        is_admin = any(role.id == ADMIN_ROLE_ID for role in interaction.user.roles)
+        now = discord.utils.utcnow().timestamp()
+        last_used = self.cooldowns.get(interaction.user.id, 0)
+
+        if not is_admin and now - last_used < 3600:
+            remaining = int(3600 - (now - last_used))
+            await interaction.response.send_message(f"⏳ You can use this again in {remaining // 60}m {remaining % 60}s.", ephemeral=True)
+            return
+
+        self.cooldowns[interaction.user.id] = now
 
         roasts = [
             "Valentine's so useless in the kitchen, even her abuela’s ghost avoids haunting her.",
