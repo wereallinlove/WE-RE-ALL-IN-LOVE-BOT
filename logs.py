@@ -36,6 +36,7 @@ class Logs(commands.Cog):
     def format_embed(self, title, description, user=None, color=discord.Color.purple()):
         timestamp = datetime.datetime.now().strftime("%m/%d/%Y at %I:%M %p")
         embed = discord.Embed(title=title, description=description, color=color)
+        embed.timestamp = datetime.datetime.utcnow()
         embed.set_footer(text=f"Logged • {timestamp}")
         if user:
             embed.set_thumbnail(url=user.display_avatar.url)
