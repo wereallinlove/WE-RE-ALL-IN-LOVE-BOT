@@ -73,7 +73,7 @@ class MinesDuelGame:
                 if i in bombs:
                     grid.append("💥")
                 else:
-                    grid.append("✅" if final else "🟩")
+                    grid.append("🟩")
             else:
                 grid.append("⬜")
         rows = [" ".join(grid[i:i+5]) for i in range(0, self.grid_size, 5)]
@@ -89,8 +89,30 @@ class MinesDuelGame:
             revealed = len(self.revealed_user2)
             lost = self.loser == self.user2
 
-        emoji = "💥" if lost else "✅" if done else "🔳"
+        emoji = "💥" if lost else "🟩" if done else "⬜"
         return f"{emoji} {user.mention} - {revealed} safe tiles"
+
+class AcceptButton(discord.ui.Button):
+    def __init__(self, challenger, opponent, bombs):
+        super().__init__(label="Accept Duel", style=discord.ButtonStyle.success)
+        self.challenger = challenger
+        self.opponent = opponent
+        self.bombs = bombs
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.opponent:
+            return await interaction.response.send_message("Only the challenged user can accept this duel.", ephemeral=True)
+
+        duel = MinesDuelGame(self.challenger, self.opponent, self.bombs)
+        duels[self.challenger.id] = duel
+        duels[self.opponent.id] = duel
+
+        embed1 = discord.Embed(title=f"{self.challenger.display_name}'s Board", description=duel.display_board(self.challenger), color=0xFF69B4)
+        embed2 = discord.Embed(title=f"{self.opponent.display_name}'s Board", description=duel.display_board(self.opponent), color=0xFF69B4)
+
+        await interaction.response.edit_message(content=f"Duel started between {self.challenger.mention} and {self.opponent.mention}! Each player has **{self.bombs} bombs** hidden.", embed=None, view=None)
+        await interaction.channel.send(embed=embed1, view=MinesDuelView(duel, self.challenger))
+        await interaction.channel.send(embed=embed2, view=MinesDuelView(duel, self.opponent))
 
 class CashOutButton(discord.ui.Button):
     def __init__(self, game: MinesDuelGame, user: discord.User):
@@ -188,22 +210,14 @@ class MinesDuel(commands.Cog):
         if interaction.user.id in duels or opponent.id in duels:
             return await interaction.response.send_message("One of you is already in a duel.", ephemeral=True)
 
-        duel = MinesDuelGame(interaction.user, opponent, bombs)
-        duels[interaction.user.id] = duel
-        duels[opponent.id] = duel
-
-        announce = discord.Embed(
-            title="💣 Duel Started!",
-            description=f"{interaction.user.mention} vs {opponent.mention}\nEach player has **{bombs} bombs** hidden. Safely uncover tiles or cash out!",
+        embed = discord.Embed(
+            title="💣 Duel Challenge!",
+            description=f"{opponent.mention}, you have been challenged by {interaction.user.mention}!\nClick below to accept the duel with **{bombs} bombs** per player.",
             color=0xFF69B4
         )
-        await interaction.response.send_message(embed=announce)
-
-        embed1 = discord.Embed(title=f"{interaction.user.display_name}'s Board", description=duel.display_board(interaction.user), color=0xFF69B4)
-        embed2 = discord.Embed(title=f"{opponent.display_name}'s Board", description=duel.display_board(opponent), color=0xFF69B4)
-
-        await interaction.channel.send(embed=embed1, view=MinesDuelView(duel, interaction.user))
-        await interaction.channel.send(embed=embed2, view=MinesDuelView(duel, opponent))
+        view = discord.ui.View(timeout=None)
+        view.add_item(AcceptButton(interaction.user, opponent, bombs))
+        await interaction.response.send_message(embed=embed, view=view)
 
 async def setup(bot):
     await bot.add_cog(MinesDuel(bot))
