@@ -73,6 +73,19 @@ class MinesDuelGame:
         rows = [" ".join(grid[i:i+5]) for i in range(0, self.grid_size, 5)]
         return "\n".join(rows)
 
+    def player_status(self, user: discord.User):
+        if user == self.user1:
+            done = self.done_user1
+            revealed = len(self.revealed_user1)
+            lost = self.loser == self.user1
+        else:
+            done = self.done_user2
+            revealed = len(self.revealed_user2)
+            lost = self.loser == self.user2
+
+        emoji = "💥" if lost else "✅" if done else "🔳"
+        return f"{emoji} {user.mention} - {revealed} safe tiles"
+
 class MinesDuelView(discord.ui.View):
     def __init__(self, game: MinesDuelGame, user: discord.User):
         super().__init__(timeout=None)
@@ -101,11 +114,13 @@ class MinesDuelButton(discord.ui.Button):
             winner = self.game.check_winner()
             embed = discord.Embed(title="💥 Duel Over!", color=0xFF69B4)
             if winner == "tie":
-                embed.description = f"Both players revealed the same number of tiles. It's a tie!"
+                embed.description = "🤝 It's a tie! Both players revealed the same number of tiles."
             elif isinstance(winner, discord.User):
                 embed.description = f"🏆 {winner.mention} wins the duel!"
             else:
                 embed.description = "The duel has ended."
+
+            embed.add_field(name="Players", value=f"{self.game.player_status(self.game.user1)}\n{self.game.player_status(self.game.user2)}", inline=False)
             embed.add_field(name=f"{self.game.user1.display_name}'s Board", value=self.game.display_board(self.game.user1), inline=False)
             embed.add_field(name=f"{self.game.user2.display_name}'s Board", value=self.game.display_board(self.game.user2), inline=False)
             await interaction.channel.send(embed=embed)
