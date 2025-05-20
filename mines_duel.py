@@ -73,7 +73,7 @@ class MinesDuelGame:
                 if i in bombs:
                     grid.append("💥")
                 else:
-                    grid.append("🟩")
+                    grid.append("✅" if final else "🟩")
             else:
                 grid.append("⬜")
         rows = [" ".join(grid[i:i+5]) for i in range(0, self.grid_size, 5)]
@@ -89,7 +89,7 @@ class MinesDuelGame:
             revealed = len(self.revealed_user2)
             lost = self.loser == self.user2
 
-        emoji = "💥" if lost else "🟩" if done else "🔳"
+        emoji = "💥" if lost else "✅" if done else "🔳"
         return f"{emoji} {user.mention} - {revealed} safe tiles"
 
 class CashOutButton(discord.ui.Button):
@@ -113,6 +113,9 @@ class MinesDuelView(discord.ui.View):
         for i in range(20):
             self.add_item(MinesDuelButton(i, game, user, self))
         self.add_item(CashOutButton(game, user))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user == self.user
 
 class MinesDuelButton(discord.ui.Button):
     def __init__(self, index: int, game: MinesDuelGame, user: discord.User, view: discord.ui.View):
@@ -150,7 +153,7 @@ async def send_final_embed(interaction, game: MinesDuelGame):
         loser = game.user2 if winner == game.user1 else game.user1
         embed.description = f"👑 {winner.mention} **has won the duel!**\n💀 {loser.mention} **has lost.**"
     else:
-        embed.description = "The duel is complete."
+        embed.description = f"👑 {game.check_winner().mention} has won the duel."
 
     embed.add_field(name="Players", value=f"{game.player_status(game.user1)}\n{game.player_status(game.user2)}", inline=False)
     embed.add_field(name=f"{game.user1.display_name}'s Board", value=game.display_board(game.user1, final=True), inline=False)
