@@ -112,7 +112,7 @@ class MinesButton(discord.ui.Button):
                 description=f"You revealed {revealed} safe tile(s) before hitting a bomb.",
                 color=0xFF0000
             )
-            await interaction.followup.send(embed=embed)
+            await interaction.response.edit_message(embed=embed, view=None)
             active_games.pop(self.user_id, None)
             return
 
@@ -122,7 +122,7 @@ class MinesButton(discord.ui.Button):
                 description=self.game.display_board(),
                 color=0xFF69B4
             )
-            await interaction.followup.send(embed=embed, view=self.view_ref)
+            await interaction.response.edit_message(embed=embed, view=self.view_ref)
 
 class CashOutButton(discord.ui.Button):
     def __init__(self, game: MinesGame, user_id: int):
@@ -140,7 +140,7 @@ class CashOutButton(discord.ui.Button):
             description=f"You safely revealed {revealed} tile(s).",
             color=0x00FF00
         )
-        await interaction.followup.send(embed=embed)
+        await interaction.response.edit_message(embed=embed, view=None)
         active_games.pop(self.user_id, None)
 
 async def setup(bot):
