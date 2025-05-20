@@ -5,7 +5,6 @@ from discord.ext import commands
 VERIFIED_ROLE_ID = 1371885746415341648
 ALLOWED_CHANNEL_ID = 1318298515948048549
 HYPERBEAM_LINK = "https://hyperbeam.com/v/wereallinlove"
-OWNER_NAME = "Nick6383"
 
 class HyperbeamCommand(commands.Cog):
     def __init__(self, bot):
@@ -26,9 +25,9 @@ class HyperbeamCommand(commands.Cog):
 
         # Build the embed
         embed = discord.Embed(
-            title=f"Join {OWNER_NAME}’s Watch Party",
+            title=f"Join 🎀's Watch Party",
             description=f"{HYPERBEAM_LINK}\n*Click here to join the Hyperbeam session*",
-            color=0x5865F2  # Hyperbeam-style blurple
+            color=0xFF69B4  # Signature server pink
         )
         embed.set_thumbnail(url="attachment://checkerboard.png")
 
