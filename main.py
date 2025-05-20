@@ -31,7 +31,8 @@ EXTENSIONS = [
     "expose_command",
     "fortune_command",
     "hyperbeam_command",
-    "mines_command"
+    "mines_command",
+    "mines_duel"
 ]
 
 @bot.event
