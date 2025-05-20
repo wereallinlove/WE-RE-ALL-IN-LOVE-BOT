@@ -1,15 +1,8 @@
-# logs.py — Federal Logging System
-# Logs EVERYTHING possible to Discord's API
-# Log Channel: 1374249689507168337
-# Format: Embed with timestamp, profile pic, clear context
-
 import discord
 from discord.ext import commands
-from discord import app_commands
 import datetime
 import difflib
 import json
-import os
 
 LOG_CHANNEL_ID = 1374249689507168337
 UPTIME_LOG_PATH = "bot_uptime_log.json"
@@ -29,28 +22,29 @@ class Logs(commands.Cog):
         channel = self.bot.get_channel(LOG_CHANNEL_ID)
         if channel:
             await channel.send(embed=embed)
-        # Also log to file for redundancy
         with open("logs_output.json", "a") as log_file:
-            log_file.write(json.dumps({"title": embed.title, "desc": embed.description, "timestamp": embed.timestamp.isoformat()}) + "\n")
+            log_file.write(json.dumps({
+                "title": embed.title,
+                "desc": embed.description,
+                "timestamp": embed.timestamp.isoformat()
+            }) + "\n")
 
     def format_embed(self, title, description, user=None, color=discord.Color.purple()):
         timestamp = datetime.datetime.now().strftime("%m/%d/%Y at %I:%M %p")
         embed = discord.Embed(title=title, description=description, color=color)
-        embed.timestamp = datetime.datetime.utcnow()
         embed.set_footer(text=f"Logged • {timestamp}")
+        embed.timestamp = datetime.datetime.utcnow()
         if user:
             embed.set_thumbnail(url=user.display_avatar.url)
             embed.set_author(name=f"{user} ({user.id})")
         return embed
 
-    # Bot online
     @commands.Cog.listener()
     async def on_ready(self):
         self.log_start_time()
         embed = self.format_embed("🟢 Bot Started", "The bot is now online and ready.", color=discord.Color.green())
         await self.send_log(embed)
 
-    # ========== MESSAGE EVENTS ==========
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.guild and not message.author.bot:
@@ -105,8 +99,6 @@ class Logs(commands.Cog):
         if reaction.message.guild and not user.bot:
             embed = self.format_embed("Reaction Removed", f"{user.mention} removed {reaction.emoji} in {reaction.message.channel.mention}", user=user)
             await self.send_log(embed)
-
-    # ... (rest of the code remains unchanged)
 
 async def setup(bot):
     await bot.add_cog(Logs(bot))
