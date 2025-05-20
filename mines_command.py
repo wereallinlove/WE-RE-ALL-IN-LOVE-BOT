@@ -88,9 +88,9 @@ class MinesView(discord.ui.View):
         super().__init__(timeout=None)
         self.game = game
         self.user_id = user_id
-        for i in range(game.max_tiles):  # 20 buttons
+        for i in range(game.max_tiles):
             self.add_item(MinesButton(i, game, user_id, self))
-        self.add_item(CashOutButton(game, user_id))  # total = 21 = safe ✅
+        self.add_item(CashOutButton(game, user_id))
 
 class MinesButton(discord.ui.Button):
     def __init__(self, index: int, game: MinesGame, user_id: int, view: discord.ui.View):
@@ -112,7 +112,7 @@ class MinesButton(discord.ui.Button):
                 description=f"You revealed {revealed} safe tile(s) before hitting a bomb.",
                 color=0xFF0000
             )
-            await interaction.response.edit_message(embed=embed, view=None)
+            await interaction.followup.send(embed=embed)
             active_games.pop(self.user_id, None)
             return
 
@@ -122,7 +122,7 @@ class MinesButton(discord.ui.Button):
                 description=self.game.display_board(),
                 color=0xFF69B4
             )
-            await interaction.response.edit_message(embed=embed, view=self.view_ref)
+            await interaction.followup.send(embed=embed, view=self.view_ref)
 
 class CashOutButton(discord.ui.Button):
     def __init__(self, game: MinesGame, user_id: int):
@@ -140,7 +140,7 @@ class CashOutButton(discord.ui.Button):
             description=f"You safely revealed {revealed} tile(s).",
             color=0x00FF00
         )
-        await interaction.response.edit_message(embed=embed, view=None)
+        await interaction.followup.send(embed=embed)
         active_games.pop(self.user_id, None)
 
 async def setup(bot):
