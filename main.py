@@ -20,11 +20,9 @@ EXTENSIONS = [
     "verify_system",
     "music_commands",
     "nick6383_trivia",
-    "roast_joelle",
     "fight_command",
     "duel_command",
     "nick6383_triviaduel",
-    "fortune_command",
     "mines_command",
     "mines_duel"
 ]
