@@ -10,8 +10,9 @@ class MinesGame:
     def __init__(self, user_id: int, bomb_count: int):
         self.user_id = user_id
         self.bomb_count = bomb_count
-        self.board_size = 5
-        self.max_tiles = self.board_size * self.board_size
+        self.rows = 4
+        self.cols = 6
+        self.max_tiles = self.rows * self.cols
         self.bombs = set(random.sample(range(self.max_tiles), bomb_count))
         self.revealed = set()
         self.active = True
@@ -46,7 +47,7 @@ class MinesGame:
                     grid.append("✅")
             else:
                 grid.append("🔳")
-        rows = [" ".join(grid[i:i+self.board_size]) for i in range(0, self.max_tiles, self.board_size)]
+        rows = [" ".join(grid[i:i+self.cols]) for i in range(0, self.max_tiles, self.cols)]
         return "\n".join(rows)
 
 active_games = {}
@@ -55,17 +56,17 @@ class MinesCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="mines", description="Play a mines game with a 5x5 grid.")
-    @app_commands.describe(bombs="How many bombs to place (1-24)")
+    @app_commands.command(name="mines", description="Play a mines game with a 4x6 grid.")
+    @app_commands.describe(bombs="How many bombs to place (1-23)")
     async def mines(self, interaction: discord.Interaction, bombs: int):
         if interaction.channel.id != ALLOWED_CHANNEL_ID:
-            return await interaction.response.send_message("You can only use this command in the designated game channel.", ephemeral=True)
+            return await interaction.response.send_message("You can only use this command in the game channel.", ephemeral=True)
 
         if not any(role.id == VERIFIED_ROLE_ID for role in interaction.user.roles):
             return await interaction.response.send_message("You don’t have permission to use this command.", ephemeral=True)
 
-        if bombs < 1 or bombs >= 25:
-            return await interaction.response.send_message("Please choose between 1 and 24 bombs.", ephemeral=True)
+        if bombs < 1 or bombs >= 24:
+            return await interaction.response.send_message("Choose between 1 and 23 bombs.", ephemeral=True)
 
         if interaction.user.id in active_games:
             return await interaction.response.send_message("You already have a game in progress.", ephemeral=True)
@@ -87,13 +88,13 @@ class MinesView(discord.ui.View):
         super().__init__(timeout=None)
         self.game = game
         self.user_id = user_id
-        for i in range(25):
+        for i in range(game.max_tiles):  # now 24 buttons
             self.add_item(MinesButton(i, game, user_id, self))
-        self.add_item(CashOutButton(game, user_id))  # no row set — Discord auto-places
+        self.add_item(CashOutButton(game, user_id))  # total = 25 ✅
 
 class MinesButton(discord.ui.Button):
     def __init__(self, index: int, game: MinesGame, user_id: int, view: discord.ui.View):
-        super().__init__(style=discord.ButtonStyle.secondary, label=str(index+1), row=index // 5)
+        super().__init__(style=discord.ButtonStyle.secondary, label=str(index+1), row=index // 6)
         self.index = index
         self.game = game
         self.user_id = user_id
@@ -125,7 +126,7 @@ class MinesButton(discord.ui.Button):
 
 class CashOutButton(discord.ui.Button):
     def __init__(self, game: MinesGame, user_id: int):
-        super().__init__(style=discord.ButtonStyle.success, label="Cash Out 💸")  # No row specified
+        super().__init__(style=discord.ButtonStyle.success, label="Cash Out 💸")
         self.game = game
         self.user_id = user_id
 
