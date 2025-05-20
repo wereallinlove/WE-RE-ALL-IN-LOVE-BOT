@@ -24,7 +24,8 @@ EXTENSIONS = [
     "duel_command",
     "nick6383_triviaduel",
     "mines_command",
-    "mines_duel"
+    "mines_duel",
+    "logs"
 ]
 
 @bot.event
