@@ -1,84 +1,71 @@
+
 import discord
 from discord.ext import commands
-from discord import app_commands, ui, Interaction
+from discord import app_commands
+import json
+import os
 
-VERIFY_CHANNEL_ID = 1372762677868498994
-APPROVE_ROLE_ID = 1372695389555130420
-VERIFIED_ROLE_ID = 1371885746415341648
+CONFIG_FILE = "verify_config.json"
+
+def load_config():
+    if not os.path.exists(CONFIG_FILE):
+        return {}
+    with open(CONFIG_FILE, "r") as f:
+        return json.load(f)
+
+def save_config(config):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f, indent=4)
 
 class VerifySystem(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.config = load_config()
 
-    @commands.Cog.listener()
-    async def on_member_join(self, member):
-        channel = self.bot.get_channel(VERIFY_CHANNEL_ID)
-        if not channel:
+    @app_commands.command(name="verify", description="Verify a new member.")
+    async def verify(self, interaction: discord.Interaction):
+        verify_channel_id = self.config.get("verify_channel_id")
+        if not verify_channel_id:
+            await interaction.response.send_message("No verify channel has been set. Use /verify setchannel to set one.", ephemeral=True)
+            return
+
+        verify_channel = interaction.guild.get_channel(verify_channel_id)
+        if not verify_channel:
+            await interaction.response.send_message("The configured verify channel no longer exists. Please set it again.", ephemeral=True)
             return
 
         embed = discord.Embed(
-            title="New Member Joined",
-            description=f"{member.mention} has joined the server.\n\nPlease approve or deny access.",
-            color=discord.Color.pink()
+            title="Verify",
+            description="Click the button below to verify.",
+            color=0xFF69B4
         )
-        embed.set_image(url=member.guild.icon.url if member.guild.icon else discord.Embed.Empty)
-        embed.set_footer(text=f"WE'RE ALL IN LOVE {discord.utils.utcnow().year}")
+        embed.set_footer(text="WE'RE ALL IN LOVE 2025")
+        await verify_channel.send(embed=embed, view=VerifyButtons())
 
-        view = ApproveDenyButtons(member.id)
-        await channel.send(embed=embed, view=view)
+        await interaction.response.send_message("Verification embed sent!", ephemeral=True)
 
-class ApproveDenyButtons(ui.View):
-    def __init__(self, member_id):
+    @app_commands.command(name="setchannel", description="Set the verification channel.")
+    @app_commands.describe(channel="The channel to use for verification.")
+    async def setchannel(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("You do not have permission to do this.", ephemeral=True)
+            return
+
+        self.config["verify_channel_id"] = channel.id
+        save_config(self.config)
+
+        await interaction.response.send_message(f"Verify channel set to {channel.mention}", ephemeral=True)
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.bot.tree.add_command(self.verify)
+        self.bot.tree.add_command(self.setchannel)
+
+class VerifyButtons(discord.ui.View):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.member_id = member_id
+        self.add_item(discord.ui.Button(label="Approve", style=discord.ButtonStyle.success, custom_id="approve"))
+        self.add_item(discord.ui.Button(label="Deny", style=discord.ButtonStyle.danger, custom_id="deny"))
 
-    @ui.button(label="Approve", style=discord.ButtonStyle.success)
-    async def approve_button(self, interaction: Interaction, button: ui.Button):
-        if not interaction.user.get_role(APPROVE_ROLE_ID):
-            await interaction.response.send_message("You don’t have permission to approve users.", ephemeral=True)
-            return
-
-        member = interaction.guild.get_member(self.member_id)
-        role = interaction.guild.get_role(VERIFIED_ROLE_ID)
-        if member and role:
-            await member.add_roles(role)
-            await interaction.response.send_message(
-                f"{member.mention} has been approved and given the <@&{VERIFIED_ROLE_ID}> role.",
-                ephemeral=False
-            )
-
-            embed = discord.Embed(
-                title="✅ Member Approved",
-                description=f"{member.mention} has been approved by {interaction.user.mention}.",
-                color=discord.Color.green()
-            )
-            await interaction.channel.send(embed=embed)
-
-    @ui.button(label="Deny", style=discord.ButtonStyle.danger)
-    async def deny_button(self, interaction: Interaction, button: ui.Button):
-        if not interaction.user.get_role(APPROVE_ROLE_ID):
-            await interaction.response.send_message("You don’t have permission to deny users.", ephemeral=True)
-            return
-
-        member = interaction.guild.get_member(self.member_id)
-        if member:
-            try:
-                await member.send("Your request to join **WE'RE ALL IN LOVE** has been denied.")
-            except:
-                pass  # if DMs are off
-
-            await member.kick(reason="Verification denied")
-            await interaction.response.send_message(
-                f"{member.mention} has been denied and kicked.",
-                ephemeral=False
-            )
-
-            embed = discord.Embed(
-                title="❌ Member Denied",
-                description=f"{member.mention} was denied access by {interaction.user.mention}.",
-                color=discord.Color.red()
-            )
-            await interaction.channel.send(embed=embed)
-
-async def setup(bot: commands.Bot):
+async def setup(bot):
     await bot.add_cog(VerifySystem(bot))
