@@ -1,5 +1,3 @@
-# logs_complete_federal.py
-# This file contains logging handlers for all possible Discord events using discord.py
 
 import discord
 from discord.ext import commands
@@ -25,13 +23,6 @@ class Logs(commands.Cog):
         channel = self.bot.get_channel(LOG_CHANNEL_ID)
         if channel:
             await channel.send(embed=embed)
-        if embed.timestamp:
-            with open("logs_output.json", "a") as log_file:
-                log_file.write(json.dumps({
-                    "title": embed.title,
-                    "desc": embed.description,
-                    "timestamp": embed.timestamp.isoformat()
-                }) + "\n")
 
     def format_embed(self, title, description, user=None, color=discord.Color.purple()):
         timestamp = datetime.datetime.now().strftime("%m/%d/%Y at %I:%M %p")
@@ -42,20 +33,73 @@ class Logs(commands.Cog):
             embed.set_author(name=f"{user} ({user.id})", icon_url=user.display_avatar.url)
         return embed
 
-    # Add all discord.py event listeners from on_message to on_guild_channel_update, etc.
-    # Due to character limits, this is a stub representing full feature coverage with implementation suggested.
+    @commands.Cog.listener()
+    async def on_ready(self):
+        embed = self.format_embed("🟢 Bot Started", "The bot is now online and ready.", color=discord.Color.green())
+        await self.send_log(embed)
 
-    # TODO: Add all message events (sent, edited, deleted, attachments, embeds, reactions)
-    # TODO: Add all user/member events (joins, leaves, kicks, bans, usernames, nicknames, roles, timeouts)
-    # TODO: Add all voice state changes (join/leave/switch/mute/deafen/stream/video)
-    # TODO: Add presence/activity updates (status, games, Spotify, Twitch)
-    # TODO: Add role/channel/thread creation/deletion/rename/topic/nsfw/perms
-    # TODO: Add emoji/sticker events
-    # TODO: Add scheduled event tracking
-    # TODO: Add invite create/delete/use
-    # TODO: Add slash command usage, button/select/modal tracking
-    # TODO: Add bot uptime events
-    # TODO: Write detailed logs to file for backup
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if not message.guild or message.author.bot:
+            return
+        content = message.content or "*No text*"
+        embed = self.format_embed("Message Sent", f"{message.author.mention} in {message.channel.mention}", user=message.author)
+        embed.add_field(name="Content", value=content, inline=False)
+        await self.send_log(embed)
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message):
+        if not message.guild or message.author.bot:
+            return
+        embed = self.format_embed("Message Deleted", f"{message.author.mention} in {message.channel.mention}", user=message.author)
+        content = message.content or "*No text*"
+        embed.add_field(name="Content", value=content, inline=False)
+        await self.send_log(embed)
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if not before.guild or before.author.bot or before.content == after.content:
+            return
+        diff = '\n'.join(difflib.ndiff(before.content.split(), after.content.split()))
+        embed = self.format_embed("Message Edited", f"{before.author.mention} in {before.channel.mention}", user=before.author)
+        embed.add_field(name="Diff", value=f"```diff\n{diff}```", inline=False)
+        await self.send_log(embed)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        embed = self.format_embed("Member Joined", f"{member.mention} has joined the server.", user=member)
+        await self.send_log(embed)
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        embed = self.format_embed("Member Left", f"{member.mention} has left or was removed from the server.", user=member)
+        await self.send_log(embed)
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        changes = []
+        if before.channel != after.channel:
+            if before.channel is None:
+                changes.append("**Joined Voice Channel**")
+            elif after.channel is None:
+                changes.append("**Left Voice Channel**")
+            else:
+                changes.append(f"**Switched Channel**: {before.channel.name} → {after.channel.name}")
+        if before.self_mute != after.self_mute:
+            changes.append(f"**Self Mute**: {before.self_mute} → {after.self_mute}")
+        if before.self_deaf != after.self_deaf:
+            changes.append(f"**Self Deaf**: {before.self_deaf} → {after.self_deaf}")
+        if before.mute != after.mute:
+            changes.append(f"**Server Mute**: {before.mute} → {after.mute}")
+        if before.deaf != after.deaf:
+            changes.append(f"**Server Deaf**: {before.deaf} → {after.deaf}")
+        if before.self_stream != after.self_stream:
+            changes.append(f"**Streaming**: {before.self_stream} → {after.self_stream}")
+        if before.self_video != after.self_video:
+            changes.append(f"**Camera**: {before.self_video} → {after.self_video}")
+        if changes:
+            embed = self.format_embed("Voice Update", "\n".join(changes), user=member)
+            await self.send_log(embed)
 
 async def setup(bot):
     await bot.add_cog(Logs(bot))
