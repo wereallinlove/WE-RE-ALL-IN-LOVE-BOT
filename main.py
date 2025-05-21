@@ -19,12 +19,6 @@ async def on_ready():
 EXTENSIONS = [
     "verify_system",
     "music_commands",
-    "nick6383_trivia",
-    "fight_command",
-    "duel_command",
-    "nick6383_triviaduel",
-    "mines_command",
-    "mines_duel",
     "logs"
 ]
 
