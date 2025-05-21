@@ -1,4 +1,3 @@
-
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -54,7 +53,25 @@ class VerifySystem(commands.Cog):
         await interaction.response.send_message(f"Verify message sent in {channel.mention}", ephemeral=True)
 
     @commands.Cog.listener()
-    async def on_ready(self):
+    async def on_member_join(self, member):
+        guild = member.guild
+        channel_id = self.config.get("verify_channel_id")
+        if not channel_id:
+            return
+
+        channel = guild.get_channel(channel_id)
+        if not channel:
+            return
+
+        embed = discord.Embed(
+            title="Verify",
+            description="Click the button below to verify.",
+            color=0xFF69B4
+        )
+        embed.set_footer(text="WE'RE ALL IN LOVE 2025")
+        await channel.send(embed=embed, view=VerifyButtons())
+
+    async def cog_load(self):
         self.bot.tree.add_command(self.verifychannel)
 
 async def setup(bot):
