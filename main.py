@@ -20,6 +20,7 @@ EXTENSIONS = [
     "verify_system",
     "music_commands",
     "loveletter",
+    "quote_command"
     "logs"
 ]
 
