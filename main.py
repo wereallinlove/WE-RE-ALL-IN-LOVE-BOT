@@ -19,6 +19,7 @@ async def on_ready():
 EXTENSIONS = [
     "verify_system",
     "music_commands",
+    "loveletter",
     "logs"
 ]
 
