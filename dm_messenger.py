@@ -7,14 +7,14 @@ ALLOWED_CHANNEL_ID = 1395149106388795577
 RELAY_CHANNEL_ID = 1395149106388795577
 EMBED_COLOR = discord.Color.pink()
 
-class Messenger(commands.GroupCog, name="message"):
+class Messenger(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="send", description="Send a private DM to a user by their ID.")
+    @app_commands.command(name="message", description="Send a private DM to a user by their ID.")
     @app_commands.describe(user_id="The user's ID", message="The message to send")
     @app_commands.checks.has_role(ALLOWED_ROLE_ID)
-    async def send(self, interaction: discord.Interaction, user_id: str, message: str):
+    async def message(self, interaction: discord.Interaction, user_id: str, message: str):
         if interaction.channel_id != ALLOWED_CHANNEL_ID:
             await interaction.response.send_message(
                 "❌ This command can only be used in the private messaging channel.", ephemeral=True
@@ -23,16 +23,16 @@ class Messenger(commands.GroupCog, name="message"):
 
         try:
             user = await self.bot.fetch_user(int(user_id))
-            await user.send(embed=discord.Embed(
-                title="📩 You received a message",
-                description=message,
-                color=EMBED_COLOR
-            ))
-            await interaction.response.send_message(embed=discord.Embed(
+            await user.send(message)  # send plain text (no embed)
+
+            # Confirmation embed (kept pink with updated description)
+            embed = discord.Embed(
                 title="✅ Message Sent",
-                description=f"Successfully messaged <@{user.id}>.",
+                description=f"Successfully messaged <@{user.id}>.\n\n**Message:**\n{message}",
                 color=discord.Color.green()
-            ))
+            )
+            await interaction.response.send_message(embed=embed)
+
         except Exception:
             await interaction.response.send_message(embed=discord.Embed(
                 title="❌ Failed to Send",
@@ -43,7 +43,7 @@ class Messenger(commands.GroupCog, name="message"):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.guild or message.author.bot:
-            return  # Only listen to real users in DMs
+            return  # only process DMs from real users
 
         relay_channel = self.bot.get_channel(RELAY_CHANNEL_ID)
         if relay_channel:
