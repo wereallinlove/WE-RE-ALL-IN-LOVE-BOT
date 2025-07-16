@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 import random
 
 EXPOSE_ROLE_ID = 1371885746415341648
-EXPOSE_CHANNEL_ID = 1318298515948048549
+EXPOSE_CHANNEL_ID = 1391828985347965019
 EMBED_COLOR = discord.Color.from_rgb(231, 84, 128)
 
 class Expose(commands.Cog):
