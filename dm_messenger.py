@@ -20,7 +20,6 @@ class Messenger(commands.Cog):
             return
 
         target_user = None
-
         try:
             target_user = await self.bot.fetch_user(int(user))
         except:
@@ -38,13 +37,12 @@ class Messenger(commands.Cog):
             return
 
         try:
-            content = message
             files = [await attachment.to_file()] if attachment else None
-            await target_user.send(content, file=files[0] if files else None)
+            await target_user.send(message, file=files[0] if files else None)
 
             embed = discord.Embed(
                 title="✅ Message Sent",
-                description=f"Successfully messaged <@{target_user.id}>.\n\n**Message:**\n{message}",
+                description=f"Message successfully sent to <@{target_user.id}>.\n\n**Message:**\n{message}",
                 color=discord.Color.green()
             )
             await interaction.response.send_message(embed=embed)
@@ -95,27 +93,33 @@ class ReplyButton(discord.ui.View):
             await interaction.response.send_message("❌ You don't have permission to use this.", ephemeral=True)
             return
 
-        await interaction.response.send_modal(ReplyModal(user_id=self.user_id))
+        await interaction.response.send_modal(ReplyModal(user_id=self.user_id, responder=interaction.user))
 
 class ReplyModal(discord.ui.Modal, title="Reply to DM"):
     response = discord.ui.TextInput(label="Your message", style=discord.TextStyle.paragraph, required=True)
 
-    def __init__(self, user_id: int):
+    def __init__(self, user_id: int, responder: discord.Member):
         super().__init__()
         self.user_id = user_id
+        self.responder = responder
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
             user = await interaction.client.fetch_user(self.user_id)
             await user.send(self.response.value)
-            await interaction.response.send_message(
-                embed=discord.Embed(
+
+            channel = interaction.client.get_channel(RELAY_CHANNEL_ID)
+            if channel:
+                embed = discord.Embed(
                     title="✅ Reply Sent",
-                    description=f"Message successfully sent to <@{user.id}>.",
+                    description=f"**To:** <@{user.id}>\n**Message:** {self.response.value}",
                     color=discord.Color.green()
-                ),
-                ephemeral=True
-            )
+                )
+                embed.set_footer(text=f"Sent by {self.responder}")
+                await channel.send(embed=embed)
+
+            await interaction.response.send_message("Reply sent.", ephemeral=True)
+
         except:
             await interaction.response.send_message(
                 embed=discord.Embed(
