@@ -21,6 +21,15 @@ EXTENSIONS = [
     "music_commands",
     "loveletter",
     "quote_command",
+    "expose_command",
+    "roast_joelle",
+    "nick6383_trivia",
+    "nick6383_triviaduel",
+    "mines_duel",
+    "mines_command",
+    "fortune_command",
+    "fight_command",
+    "duel_command",
     "logs"
 ]
 
