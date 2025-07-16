@@ -4,21 +4,17 @@ from discord import app_commands
 
 ALLOWED_ROLE_ID = 1371681883796017222
 ALLOWED_CHANNEL_ID = 1395149106388795577
-RELAY_CHANNEL_ID = 1395149106388795577  # where replies from users are shown
+RELAY_CHANNEL_ID = 1395149106388795577
 EMBED_COLOR = discord.Color.pink()
 
-class Messenger(commands.Cog):
+class Messenger(commands.GroupCog, name="message"):
     def __init__(self, bot):
         self.bot = bot
 
-    # Register the slash command with the tree
-    async def cog_load(self):
-        self.bot.tree.add_command(self.message)
-
-    @app_commands.command(name="message", description="DM a user anonymously")
-    @app_commands.describe(user_id="The Discord user ID", message="The message to send")
+    @app_commands.command(name="send", description="Send a private DM to a user by their ID.")
+    @app_commands.describe(user_id="The user's ID", message="The message to send")
     @app_commands.checks.has_role(ALLOWED_ROLE_ID)
-    async def message(self, interaction: discord.Interaction, user_id: str, message: str):
+    async def send(self, interaction: discord.Interaction, user_id: str, message: str):
         if interaction.channel_id != ALLOWED_CHANNEL_ID:
             await interaction.response.send_message(
                 "❌ This command can only be used in the private messaging channel.", ephemeral=True
@@ -46,8 +42,8 @@ class Messenger(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if message.guild is not None or message.author.bot:
-            return  # only process DMs from real users
+        if message.guild or message.author.bot:
+            return  # Only listen to real users in DMs
 
         relay_channel = self.bot.get_channel(RELAY_CHANNEL_ID)
         if relay_channel:
@@ -56,7 +52,10 @@ class Messenger(commands.Cog):
                 description=message.content,
                 color=EMBED_COLOR
             )
-            embed.set_author(name=f"{message.author} ({message.author.id})", icon_url=message.author.display_avatar.url)
+            embed.set_author(
+                name=f"{message.author} ({message.author.id})",
+                icon_url=message.author.display_avatar.url
+            )
             await relay_channel.send(embed=embed)
 
 async def setup(bot):
