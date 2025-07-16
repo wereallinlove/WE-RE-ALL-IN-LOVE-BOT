@@ -30,6 +30,7 @@ EXTENSIONS = [
     "fortune_command",
     "fight_command",
     "duel_command",
+    "dm_messenger",
     "logs"
 ]
 
