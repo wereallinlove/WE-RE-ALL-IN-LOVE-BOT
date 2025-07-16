@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-ALLOWED_ROLE_ID = 1371681883796017222
+ALLOWED_ROLE_ID = 1395157495873540278
 ALLOWED_CHANNEL_ID = 1395149106388795577
 RELAY_CHANNEL_ID = 1395149106388795577
 EMBED_COLOR = discord.Color.pink()
@@ -21,11 +21,9 @@ class Messenger(commands.Cog):
 
         target_user = None
 
-        # Try fetching by ID
         try:
             target_user = await self.bot.fetch_user(int(user))
         except:
-            # Try by username#discriminator
             for u in self.bot.users:
                 if str(u) == user:
                     target_user = u
@@ -61,7 +59,7 @@ class Messenger(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.guild or message.author.bot:
-            return  # Only listen to DMs from real users
+            return
 
         relay_channel = self.bot.get_channel(RELAY_CHANNEL_ID)
         if not relay_channel:
@@ -77,14 +75,55 @@ class Messenger(commands.Cog):
             icon_url=message.author.display_avatar.url
         )
 
-        # Send embed first
-        await relay_channel.send(embed=embed)
+        view = ReplyButton(message.author.id)
+        await relay_channel.send(embed=embed, view=view)
 
-        # Send attachments, if any
         for attachment in message.attachments:
             await relay_channel.send(
                 content=f"📎 Attachment from {message.author}:", 
                 file=await attachment.to_file()
+            )
+
+class ReplyButton(discord.ui.View):
+    def __init__(self, user_id: int):
+        super().__init__(timeout=None)
+        self.user_id = user_id
+
+    @discord.ui.button(label="Reply", style=discord.ButtonStyle.primary)
+    async def reply(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if ALLOWED_ROLE_ID not in [role.id for role in interaction.user.roles]:
+            await interaction.response.send_message("❌ You don't have permission to use this.", ephemeral=True)
+            return
+
+        await interaction.response.send_modal(ReplyModal(user_id=self.user_id))
+
+class ReplyModal(discord.ui.Modal, title="Reply to DM"):
+    response = discord.ui.TextInput(label="Your message", style=discord.TextStyle.paragraph, required=True)
+
+    def __init__(self, user_id: int):
+        super().__init__()
+        self.user_id = user_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            user = await interaction.client.fetch_user(self.user_id)
+            await user.send(self.response.value)
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="✅ Reply Sent",
+                    description=f"Message successfully sent to <@{user.id}>.",
+                    color=discord.Color.green()
+                ),
+                ephemeral=True
+            )
+        except:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="❌ Failed to Send",
+                    description="Could not DM this user.",
+                    color=discord.Color.red()
+                ),
+                ephemeral=True
             )
 
 async def setup(bot):
