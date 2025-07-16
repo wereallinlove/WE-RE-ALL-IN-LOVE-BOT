@@ -11,6 +11,10 @@ class Messenger(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # Register the slash command with the tree
+    async def cog_load(self):
+        self.bot.tree.add_command(self.message)
+
     @app_commands.command(name="message", description="DM a user anonymously")
     @app_commands.describe(user_id="The Discord user ID", message="The message to send")
     @app_commands.checks.has_role(ALLOWED_ROLE_ID)
