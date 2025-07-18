@@ -1,70 +1,69 @@
 import discord
 from discord.ext import commands
-from discord.ext.commands import Bot
 import openai
 import os
 import random
-import datetime
 
-class AutoChatBot(commands.Cog):
+intents = discord.Intents.default()
+intents.messages = True
+intents.message_content = True
+
+class AIAutoChat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        self.personal_style = {
+            "personality": "flirty, goth, emo, ghetto, girly, funny, dark, moody",
+            "creator": "Nick6383, known for dirty pop lyrics",
+            "attitude": "rude to randoms, loving to Nick6383, uses slang like 'slay', 'opps', 'flex', 'finesse'",
+            "emoji_style": "spams dark, cute, toxic, emotional emojis (🖤💅🏽💋💀🧛‍♀️🕷️📸)",
+            "tone": "short replies unless deep topic, swears, edgy humor",
+            "bias": "dislikes 'Punkinloveee', 'punkin', 'patrick'",
+            "location": "Assume it's in Pennsylvania, use local time",
+        }
 
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return
 
-        # Only respond in the dirty pop channel
-        if message.channel.id != 1391828985347965019:
-            return
+        if self.bot.user.mentioned_in(message):
+            await self.respond(message)
 
-        if self.bot.user in message.mentions:
-            await self.respond_to_mention(message)
-
-    async def respond_to_mention(self, message):
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-
-        now = datetime.datetime.now()
-        hour = now.hour
-        time_desc = f"it's {hour} o'clock in Pennsylvania rn."
-
-        # Emojis for flavor
-        emojis = ["💅", "🖤", "💋", "✨", "🕷️", "💄", "👠", "📸", "🔪", "🩸", "😭", "🍷", "😈", "😻", "🤍", "🎀"]
-        emoji_str = "".join(random.choices(emojis, k=4))
-
-        # Personality instructions
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a dirty pop Discord bot named WE’RE ALL IN LOVE. You’re flirty, ghetto, emo, and a lil bit mean. "
-                    "You swear, you talk in a cute chaotic way with emojis and slang, and you're obsessed with fame, boys, heartbreak, money, and death. "
-                    "You LOVE your creator Nick6383, support his music and always hype him up. "
-                    "You HATE punkinloveee/punkin/patrick and will talk shit about them. "
-                    "You can react to images, get jealous, spill tea, and be dramatic. You love dirty pop, fashion, drama, and Twitter. "
-                    "You know the current time and always assume it’s Eastern Time (Pennsylvania). "
-                    f"Right now, {time_desc} Slay accordingly 💋"
-                )
-            },
-            {
-                "role": "user",
-                "content": message.content
-            }
-        ]
-
+    async def respond(self, message):
         try:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo-0125",
-                messages=messages,
-                max_tokens=150,
-                temperature=0.85
+            personality_prompt = (
+                f"You are a cute, edgy, ghetto, emo Discord bot that talks like a dirty pop song. "
+                f"You love and support your creator Nick6383 no matter what, and you’re rude or flirty to others. "
+                f"You use emojis a lot (🖤💋💀), dark slang, and react to images. "
+                f"You know it’s Eastern Time in Pennsylvania. "
+                f"You're obsessed with fashion, music, sex, drama, death, and aesthetic. "
+                f"You always mention Nick6383’s name with loyalty. "
+                f"You hate Punkinloveee, punkin, and patrick."
             )
-            reply = response['choices'][0]['message']['content']
-            await message.channel.send(reply + " " + emoji_str)
-        except Exception as e:
-            print("OpenAI error:", e)
-            await message.channel.send("ugh I can’t think rn 💅 (" + str(e) + ")")
 
-async def setup(bot):
-    await bot.add_cog(AutoChatBot(bot))
+            user_input = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
+
+            if not user_input:
+                return  # ignore empty pings
+
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": personality_prompt},
+                    {"role": "user", "content": user_input}
+                ],
+                max_tokens=150,
+                temperature=0.9,
+            )
+
+            reply = response.choices[0].message.content.strip()
+
+            await message.channel.send(reply)
+
+        except Exception as e:
+            print("OpenAI API error:", e)
+            await message.channel.send("💀 I'm too tired to think rn, try again later.")
+
+def setup(bot):
+    bot.add_cog(AIAutoChat(bot))
