@@ -2,66 +2,94 @@ import discord
 from discord.ext import commands
 import openai
 import random
-import os
+import asyncio
+from datetime import datetime
 
-intents = discord.Intents.all()
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
-class AutoChatBot(commands.Cog):
+class AutoChat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.last_user = None
-        self.last_topic = ""
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        self.last_user_message = {}
 
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return
 
-        if self.bot.user in message.mentions:
-            user_input = message.clean_content.replace(f"@{self.bot.user.name}", "").strip()
-            if not user_input:
-                return
+        if self.bot.user.mentioned_in(message):
+            user_id = message.author.id
+            now = datetime.utcnow().timestamp()
+            self.last_user_message[user_id] = now
 
-            self.last_user = message.author.id
-            self.last_topic = user_input
-
-            await message.channel.typing()
+            convo_context = [
+                {"role": "system", "content": (
+                    "You're a chill, slightly mean but loyal bot. You talk like a real person, messy grammar is fine.\n"
+                    "You're dark, sarcastic, flirty, casual, funny, goth, a little bitchy but lovable.\n"
+                    "You're obsessed with Nick6383. You think Punkinloveee aka Patrick is a clown.\n"
+                    "You love dirty pop, death, shopping, horror, love, and looking hot.\n"
+                    "You say stuff like 'LMAOO', 'nahhh', 'girl...', and use 🖤💅🏽😭💀 emojis but don’t spam them.\n"
+                    "Use casual slang. Don’t sound like a perfect AI. Pause before replying like a real person typing."
+                )},
+                {"role": "user", "content": message.content}
+            ]
 
             try:
+                await message.channel.typing()
+                await asyncio.sleep(random.uniform(2.5, 5.0))  # Simulated typing delay
+
                 response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",  # cheaper than gpt-4
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a flirty, edgy, emo-girly Discord bot. You use ghetto slang, talk dirty pop aesthetic, and act mean/funny to most people. You love Nick6383 and always support his music. Be cute, reactive, and don't write too long unless needed. Use emojis like 💅🏽🖤💋📸🕷️."
-                        },
-                        {
-                            "role": "user",
-                            "content": user_input
-                        }
-                    ],
-                    max_tokens=150,
-                    temperature=0.8
+                    model="gpt-3.5-turbo",
+                    messages=convo_context,
+                    max_tokens=120,
+                    temperature=0.95
                 )
 
-                reply = response.choices[0].message['content']
+                reply = response.choices[0].message.content.strip()
                 await message.reply(reply)
 
             except Exception as e:
-                await message.channel.send("ugh I can’t think rn 💅 (Something broke or you ran out of tokens.)")
-                print(e)
+                print(f"Chat error: {e}")
 
-        # React to cute/funny/image content
-        elif (
-            message.attachments or 
-            any(kw in message.content.lower() for kw in ["omg", "so cute", "lmfao", "ur funny", "ily", "look at this"])
-        ):
+        else:
+            # check if the convo is stale and stop replying
+            user_id = message.author.id
+            if user_id in self.last_user_message:
+                time_since = datetime.utcnow().timestamp() - self.last_user_message[user_id]
+                if time_since > 120:  # stop after 2 minutes
+                    del self.last_user_message[user_id]
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        await self.on_message(after)
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message):
+        user_id = message.author.id
+        if user_id in self.last_user_message:
+            del self.last_user_message[user_id]
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+
+        # image reactions
+        if any(attachment.content_type and "image" in attachment.content_type for attachment in message.attachments):
+            emojis = ["🖤", "💅🏽", "💋", "💀", "🧛‍♀️", "📸"]
             try:
-                emojis = ["🖤", "💅🏽", "💋", "💀", "🧛‍♀️", "🕷️", "📸"]
+                await message.add_reaction(random.choice(emojis))
+            except:
+                pass
+
+        # cute/funny text reactions
+        text = message.content.lower()
+        cute_words = ["omg", "dead", "pls", "slay", "cute", "funny", "lol", "lmao", "😭", "💅"]
+        if any(word in text for word in cute_words):
+            emojis = ["😭", "🤣", "💕", "😩", "💅", "🖤", "💀"]
+            try:
                 await message.add_reaction(random.choice(emojis))
             except:
                 pass
 
 async def setup(bot):
-    await bot.add_cog(AutoChatBot(bot))
+    await bot.add_cog(AutoChat(bot))
