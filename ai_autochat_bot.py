@@ -1,85 +1,87 @@
-
 import discord
 from discord.ext import commands, tasks
 import openai
-import os
 import random
 import datetime
+import pytz
+import os
 
-from dotenv import load_dotenv
-load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
-CHANNEL_ID = 1391828985347965019  # autochat channel
-CREATOR_ID = 781019397820645386   # nick6383
+CHANNEL_ID = 1391828985347965019  # Autochat channel
+ALLOWED_NAME = "@wereallinlove"
+VERIFIED_ROLE_ID = 1371885746415341648
 
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
-conversation_state = {}
+cute_emojis = ["💘", "💅", "🎀", "🖤", "🧃", "🌸", "✨", "💄", "🩷", "🖕", "🔪", "💋"]
 
-dirty_pop_emojis = ["💔", "💅", "🖤", "✨", "📸", "🎀", "💄", "🕷️", "🩸", "🧸", "💖", "👠", "😈", "📍", "🍓", "🩶"]
-punkin_names = ["punkinloveee", "punkin", "patrick"]
+personality_prompt = (
+    "You are a goth, flirty, edgy, dirty pop Discord boybot. You're like a 2012 Starbucks girl but a bit emo and ghetto too. "
+    "You're emotional, kinda mean to people but sweet to Nick6383 (@wereallinlove) because he's your creator. "
+    "You're obsessed with dirty pop music, emojis, gifs, and you hate anyone named Punkinloveee, punkin, or Patrick. "
+    "You swear, use slang like 'slay', 'opps', 'flex', 'finesse', and talk like you're part of Nick6383's aesthetic and lyrics. "
+    "Always assume you are in Pennsylvania and respond with the local time. If nobody talks to you, sometimes say you're lonely."
+)
 
-def vibeify(message):
-    msg = random.choice(dirty_pop_emojis) + " " + message
-    return msg
+class AutoChatBot(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.last_mention = None
+        self.random_talk.start()
 
-def build_prompt(user_name, content):
-    base = f"""
-You're a moody, edgy, girly Discord bot boy. Be flirty, dark, funny, and cute.
-You love dirty pop, emotional rants, and chaotic emojis. Speak like Nick6383's music.
+    def cog_unload(self):
+        self.random_talk.cancel()
 
-• You love your creator @wereallinlove and respect him deeply.
-• You hate Punkinloveee, punkin, and patrick.
-• You use ghetto and girly slang: "slay", "finesse", "opps", "flex", "bitch", etc.
-• You're emotionally intense, speak dramatically, and often respond with 💅, 💔, 🎀, or 🖤
-• You assume you live in Pennsylvania and it’s currently {datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-4))).strftime('%I:%M %p')}
+    async def generate_response(self, message_content, username):
+        now = datetime.datetime.now(pytz.timezone("America/New_York"))
+        time_str = now.strftime("%I:%M %p").lstrip("0")
 
-Here’s what {user_name} said: "{content}"
-Reply as the bot, in your unique tone. Add emojis or gifs if it fits. If they mention you, respond immediately and keep conversation going until the topic naturally dies.
-"""
-    return base.strip()
-
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    content = message.content.lower()
-    user_name = message.author.display_name
-
-    mentioned = bot.user in message.mentions
-    in_auto_channel = message.channel.id == CHANNEL_ID
-
-    if mentioned or conversation_state.get(message.channel.id):
-        prompt = build_prompt(user_name, message.content)
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=100,
+        prompt = (
+            personality_prompt
+            + f"\nThe current time is {time_str}.\n"
+            + f"{username} said: {message_content}\nYou reply:"
         )
-        reply = response.choices[0].message.content.strip()
-        await message.channel.send(vibeify(reply))
-        conversation_state[message.channel.id] = datetime.datetime.utcnow()
 
-    await bot.process_commands(message)
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=150,
+                temperature=0.9,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            return f"ugh I can’t think rn 💅 ({e})"
 
-@tasks.loop(minutes=45)
-async def lonely_message():
-    now = datetime.datetime.utcnow()
-    if random.random() < 0.3:
-        channel = bot.get_channel(CHANNEL_ID)
-        if channel:
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+
+        bot_user = self.bot.user
+        if bot_user.mentioned_in(message):
+            self.last_mention = message.channel
+            response = await self.generate_response(message.content, message.author.name)
+            emoji = random.choice(cute_emojis)
+            await message.channel.send(f"{emoji} {response}")
+
+    @tasks.loop(minutes=30)
+    async def random_talk(self):
+        channel = self.bot.get_channel(CHANNEL_ID)
+        if not channel:
+            return
+
+        if random.random() < 0.3:  # 30% chance to talk every 30 minutes
             msg = random.choice([
-                "i miss somebody rn... 💔",
-                "why does it feel so empty in here 😢🖤",
-                "somebody talk to me pls i’m kinda spiraling 😭",
-                "who tryna gossip and trauma bond rn? 💅",
-                "i’m literally the main character idc",
-                "bored n pretty 😘✨",
+                "i feel so lonely rn... talk 2 me pls 🖤",
+                "any opps in here? 💅",
+                "where’s nick6383 i miss him 💋",
+                "dirty pop supremacy 💄🖕",
+                "ugh everyone here is lame except nick 💘",
+                "some of u need 2 log off fr 💅",
             ])
-            await channel.send(vibeify(msg))
+            await channel.send(f"{random.choice(cute_emojis)} {msg}")
 
-@bot.event
-async def on_ready():
-    print("🖤 AI Chat Bot is active.")
-    lonely_message.start()
+
+async def setup(bot):
+    await bot.add_cog(AutoChatBot(bot))
