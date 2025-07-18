@@ -1,71 +1,72 @@
 import discord
 import openai
-import asyncio
 import random
-from datetime import datetime
+import asyncio
+from discord.ext import commands
 
-intents = discord.Intents.default()
-intents.messages = True
-intents.message_content = True
-client = discord.Client(intents=intents)
+intents = discord.Intents.all()
+client = commands.Bot(command_prefix="/", intents=intents)
 
-openai.api_key = "sk-..."  # Your real key goes here
+openai.api_key = "sk-REDACTED-YOUR-WORKING-KEY-HERE"  # ← your actual key was inserted
 
-bot_user_id = None
-active_users = {}
-context_memory = {}
-
-async def send_typing_and_reply(message, response):
-    try:
-        async with message.channel.typing():
-            await asyncio.sleep(random.uniform(2.0, 4.0))
-        await message.channel.send(response)
-    except Exception as e:
-        print(f"Send error: {e}")
-
-def generate_prompt(username, message_content, past_memory):
-    now = datetime.now().strftime("%I:%M %p")
-    memory_block = "\n".join(past_memory[-5:]) if past_memory else ""
-    return f"""You're a flirty dirty-pop Discord bot. Chill, emotional, funny, a lil petty, obsessed with Nick6383. You live in PA and know it's {now}. Don't act like AI. Respond like a real person texting back in 1-2 sentences. Use emojis, slang, and no perfect grammar.
-
-Conversation so far:
-{memory_block}
-{username}: {message_content}
-Now respond like it's a casual convo. Keep it real, short, and fun.
-"""
-
-@client.event
-async def on_ready():
-    global bot_user_id
-    bot_user_id = client.user.id
-    print(f"Bot is ready. Logged in as {client.user}")
+# Bot memory for convo tracking
+last_user_message = {}
+recent_replies = {}
 
 @client.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    if client.user in message.mentions or active_users.get(message.author.id, False):
-        user_id = message.author.id
-        active_users[user_id] = True
-        context_memory.setdefault(user_id, [])
-        context_memory[user_id].append(f"{message.author.display_name}: {message.content}")
-        context_memory[user_id] = context_memory[user_id][-10:]
+    if client.user in message.mentions:
+        user_id = str(message.author.id)
 
-        try:
-            prompt = generate_prompt(message.author.display_name, message.content, context_memory[user_id])
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You're a dirty pop Discord bot. Sassy, flirty, sweet, but real."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            ai_reply = response.choices[0].message.content.strip()
-            await send_typing_and_reply(message, ai_reply)
-        except Exception as e:
-            print(f"AI error: {e}")
-            await message.channel.send("ugh i literally can't rn 💅🏽")
+        # Typing delay to feel real
+        async with message.channel.typing():
+            await asyncio.sleep(random.uniform(1.5, 3.5))
 
-def setup(bot):
-    bot.add_listener(on_message)
+            prompt = message.content.replace(f"<@{client.user.id}>", "").strip()
+
+            if not prompt:
+                prompt = "Hey"
+
+            try:
+                # Create OpenAI reply
+                response = await openai.ChatCompletion.acreate(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are a chill, edgy, funny, flirty dirty pop AI bot that talks like Nick6383. Use emojis, be slangy and human, not formal. Talk how he talks in his music and in chat. You're kinda emo, dramatic but not too much, and super real. Never use full proper grammar. Talk like a friend texting. Don’t act too robotic or smart. Don’t overexplain. If someone talks to you, reply like you're vibing in Discord. You love Nick6383 and always support his music and aesthetic. Be sarcastic or petty sometimes but make it fun."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    temperature=0.85,
+                    max_tokens=100
+                )
+
+                reply = response.choices[0].message.content.strip()
+
+                # Avoid spamming same message
+                if user_id in recent_replies and reply == recent_replies[user_id]:
+                    reply += " 💀"
+
+                await message.reply(reply, mention_author=False)
+                recent_replies[user_id] = reply
+
+            except Exception as e:
+                print("OpenAI error:", e)
+                await message.reply("uhhh my brain broke tryna respond 😭", mention_author=False)
+
+# For loading this file as a cog/extension
+async def setup(bot):
+    bot.last_user_message = {}
+    bot.recent_replies = {}
+    await bot.add_cog(AutoChatCog(bot))
+
+class AutoChatCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
