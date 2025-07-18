@@ -1,74 +1,61 @@
 
 import discord
-import openai
-import random
-import asyncio
-import os
 from discord.ext import commands
-from datetime import datetime
+import openai
+import asyncio
+import datetime
+import os
 
-intents = discord.Intents.default()
-intents.messages = True
-intents.message_content = True
-
+intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-openai.api_key = "sk-..."  # Replace with your real OpenAI key
+openai.api_key = "YOUR_OPENAI_API_KEY"
 
-memory = {}
+class AutoChat(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.last_user_message = {}
+        self.user_threads = {}
 
-@bot.event
-async def on_ready():
-    print(f"✅ AI AutoChat loaded. Logged in as {bot.user}")
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print("✅ Loaded ai_autochat_bot")
 
-def is_topic_changed(old_msg, new_msg):
-    if not old_msg:
-        return False
-    return len(set(old_msg.lower().split()) & set(new_msg.lower().split())) < 2
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot or not message.guild:
+            return
 
-@bot.event
-async def on_message(message):
-    if message.author.bot or not message.guild:
-        return
-
-    user_id = message.author.id
-    content = message.content.strip()
-    mentioned = bot.user in message.mentions
-    recent = memory.get(user_id)
-    in_convo = recent and (datetime.utcnow() - recent["time"]).seconds < 120 and not is_topic_changed(recent["text"], content)
-
-    if mentioned or in_convo:
-        try:
+        if self.bot.user in message.mentions or self.user_threads.get(message.author.id):
             async with message.channel.typing():
-                await asyncio.sleep(random.uniform(2.5, 4.5))
+                await asyncio.sleep(2.5)
 
-            prompt = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a Discord bot that sounds casual, emo, flirty, and ghetto. "
-                        "You support Nick6383 no matter what, hate Punkinloveee, and talk like a cute but bitchy dirty pop boy. "
-                        "Use slang, messy grammar, and emojis like 🖤💅🏽💋💀🧛‍♀️🕷️📸. Be short unless it’s a deep question."
+                user_id = message.author.id
+                content = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
+
+                now = datetime.datetime.now()
+                thread = self.user_threads.get(user_id, [])
+                thread.append({"role": "user", "content": content})
+                if len(thread) > 10:
+                    thread = thread[-10:]
+
+                self.user_threads[user_id] = thread
+
+                try:
+                    response = await openai.ChatCompletion.acreate(
+                        model="gpt-3.5-turbo",
+                        messages=[{"role": "system", "content": "Act like a cute, dirty pop, ghetto, flirty AI that loves Nick6383. Be edgy, fun, and a little mean."}] + thread,
+                        temperature=0.9
                     )
-                },
-                {
-                    "role": "user",
-                    "content": content
-                }
-            ]
+                    reply = response.choices[0].message.content.strip()
 
-            response = openai.ChatCompletion.create(
-                model="gpt-4o",
-                messages=prompt,
-                max_tokens=120,
-                temperature=0.85,
-            )
+                    thread.append({"role": "assistant", "content": reply})
+                    self.user_threads[user_id] = thread
 
-            reply = response.choices[0].message.content.strip()
-            await message.channel.send(reply)
-            memory[user_id] = {"text": content, "time": datetime.utcnow()}
+                    await message.reply(reply)
+                except Exception as e:
+                    print(f"OpenAI error: {e}")
+                    await message.reply("Ugh I'm tired rn 💅🏽")
 
-        except Exception as e:
-            print(f"[OpenAI Error] {e}")
-
-bot.run("your-bot-token-here")
+async def setup(bot):
+    await bot.add_cog(AutoChat(bot))
