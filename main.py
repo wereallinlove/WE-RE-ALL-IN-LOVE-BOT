@@ -22,6 +22,7 @@ EXTENSIONS = [
     "loveletter",
     "quote_command",
     "dm_messenger",
+    "bottalk_command",
     "logs"
 ]
 
