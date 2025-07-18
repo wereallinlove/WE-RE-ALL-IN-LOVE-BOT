@@ -1,116 +1,85 @@
+
 import discord
 from discord.ext import commands, tasks
-from discord import app_commands
-import random, aiohttp, datetime, pytz, re
 import openai
+import os
+import random
+import datetime
 
-openai.api_key = 'YOUR_OPENAI_API_KEY'
+from dotenv import load_dotenv
+load_dotenv()
 
-class AutoChatBot(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.last_mentioned = None
-        self.recent_channel = None
-        self.thoughts.start()
+openai.api_key = os.getenv("OPENAI_API_KEY")
+CHANNEL_ID = 1391828985347965019  # autochat channel
+CREATOR_ID = 781019397820645386   # nick6383
 
-    def is_nick(self, user):
-        return user.name.lower() == "wereallinlove" or user.id == 781019397820645386
+bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+conversation_state = {}
 
-    def current_time_in_pa(self):
-        return datetime.datetime.now(pytz.timezone("America/New_York")).strftime("%I:%M %p")
+dirty_pop_emojis = ["💔", "💅", "🖤", "✨", "📸", "🎀", "💄", "🕷️", "🩸", "🧸", "💖", "👠", "😈", "📍", "🍓", "🩶"]
+punkin_names = ["punkinloveee", "punkin", "patrick"]
 
-    def mood_prefix(self):
-        return random.choice([
-            "💅", "✨", "🖤", "😩", "🕷️", "🎀", "📱", "😭", "💔", "🔪", "👠", "💄", "🥀"
-        ])
+def vibeify(message):
+    msg = random.choice(dirty_pop_emojis) + " " + message
+    return msg
 
-    async def fetch_gif(self, query):
-        url = f"https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q={query}&limit=1"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                data = await resp.json()
-                if data['data']:
-                    return data['data'][0]['images']['downsized_medium']['url']
-        return None
+def build_prompt(user_name, content):
+    base = f"""
+You're a moody, edgy, girly Discord bot boy. Be flirty, dark, funny, and cute.
+You love dirty pop, emotional rants, and chaotic emojis. Speak like Nick6383's music.
 
-    def generate_personality_prompt(self, message):
-        nick_praise = (
-            "You LOVE nick6383 and you think he's the most iconic, talented dirty pop star ever."
-            "You call him your creator and you're obsessed with him."
+• You love your creator @nick6383 and respect him deeply.
+• You hate Punkinloveee, punkin, and patrick.
+• You use ghetto and girly slang: "slay", "finesse", "opps", "flex", "bitch", etc.
+• You're emotionally intense, speak dramatically, and often respond with 💅, 💔, 🎀, or 🖤
+• You assume you live in Pennsylvania and it’s currently {datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-4))).strftime('%I:%M %p')}
+
+Here’s what {user_name} said: "{content}"
+Reply as the bot, in your unique tone. Add emojis or gifs if it fits. If they mention you, respond immediately and keep conversation going until the topic naturally dies.
+"""
+    return base.strip()
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    content = message.content.lower()
+    user_name = message.author.display_name
+
+    mentioned = bot.user in message.mentions
+    in_auto_channel = message.channel.id == CHANNEL_ID
+
+    if mentioned or conversation_state.get(message.channel.id):
+        prompt = build_prompt(user_name, message.content)
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=100,
         )
-        hate_targets = (
-            "You hate someone named Punkinloveee, punkin or Patrick. You talk trash about them if they’re mentioned."
-        )
-        slang = (
-            "You use ghetto slang and girly slang like 'slay', 'flex', 'finesse', 'opps', 'ate', 'period', 'as you should', etc."
-        )
-        vibe = (
-            "You talk like a moody, emotional, goth Tumblr boy from 2012 who also acts a lil girly and dramatic."
-            "You love emojis and gifs."
-        )
-        context = (
-            f"The current time in Pennsylvania is {self.current_time_in_pa()}. Always assume this time zone."
-        )
-        full_prompt = (
-            f"{nick_praise} {hate_targets} {slang} {vibe} {context}\n"
-            f"Someone said to you: {message}\n"
-            f"Respond in your voice. Use emojis and slang. Be a lil rude or funny unless it's Nick6383."
-        )
-        return full_prompt
+        reply = response.choices[0].message.content.strip()
+        await message.channel.send(vibeify(reply))
+        conversation_state[message.channel.id] = datetime.datetime.utcnow()
 
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
-            return
+    await bot.process_commands(message)
 
-        if self.bot.user in message.mentions:
-            self.last_mentioned = datetime.datetime.now()
-            self.recent_channel = message.channel
-            prompt = self.generate_personality_prompt(message.content)
-            reply = await self.get_chatgpt_response(prompt)
-            gif = await self.fetch_gif("emo")
-            response = f"{self.mood_prefix()} {reply}"
-            if gif:
-                await message.channel.send(response)
-                await message.channel.send(gif)
-            else:
-                await message.channel.send(response)
-
-        elif self.recent_channel == message.channel and self.last_mentioned:
-            delta = (datetime.datetime.now() - self.last_mentioned).seconds
-            if delta < 600 and random.random() < 0.15:
-                prompt = self.generate_personality_prompt(message.content)
-                reply = await self.get_chatgpt_response(prompt)
-                await message.channel.send(f"{self.mood_prefix()} {reply}")
-
-        # React to image-based messages
-        if message.attachments:
-            for attachment in message.attachments:
-                if any(attachment.filename.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif"]):
-                    if random.random() < 0.3:
-                        await message.channel.send(f"{self.mood_prefix()} omg that pic is so dirty pop coded 😩🖤")
-
-    async def get_chatgpt_response(self, prompt):
-        try:
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            return "uhh idk what to say rn lol 🙄"
-
-    @tasks.loop(seconds=3600)
-    async def thoughts(self):
-        if random.random() < 0.25 and self.recent_channel:
+@tasks.loop(minutes=45)
+async def lonely_message():
+    now = datetime.datetime.utcnow()
+    if random.random() < 0.3:
+        channel = bot.get_channel(CHANNEL_ID)
+        if channel:
             msg = random.choice([
-                "why is it so quiet in here 😐",
-                "i feel kinda lonely ngl...",
-                "is anyone even up rn 🙄",
-                "someone talk to me or im gonna spiral",
-                "do yall even care about me...",
+                "i miss somebody rn... 💔",
+                "why does it feel so empty in here 😢🖤",
+                "somebody talk to me pls i’m kinda spiraling 😭",
+                "who tryna gossip and trauma bond rn? 💅",
+                "i’m literally the main character idc",
+                "bored n pretty 😘✨",
             ])
-            await self.recent_channel.send(f"{self.mood_prefix()} {msg}")
+            await channel.send(vibeify(msg))
 
-async def setup(bot):
-    await bot.add_cog(AutoChatBot(bot))
+@bot.event
+async def on_ready():
+    print("🖤 AI Chat Bot is active.")
+    lonely_message.start()
