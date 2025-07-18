@@ -25,17 +25,6 @@ class VerifyButtons(discord.ui.View):
             color=0x57F287
         )
         await interaction.response.send_message(embed=embed)
-
-        try:
-            dm_embed = discord.Embed(
-                title="✅ Access Granted",
-                description=f"You’ve been approved and are now a member of **{interaction.guild.name}**!",
-                color=0x57F287
-            )
-            await self.member.send(embed=dm_embed)
-        except:
-            pass
-
         self.stop()
 
     @discord.ui.button(label="Deny", style=discord.ButtonStyle.danger, custom_id="verify_deny")
@@ -51,22 +40,10 @@ class VerifyButtons(discord.ui.View):
             color=0xED4245
         )
         await interaction.response.send_message(embed=embed)
-
-        try:
-            dm_embed = discord.Embed(
-                title="❌ Application Denied",
-                description=f"Your application to join **{interaction.guild.name}** has been denied.",
-                color=0xED4245
-            )
-            await self.member.send(embed=dm_embed)
-        except:
-            pass
-
         try:
             await self.member.kick(reason="Verification denied")
         except:
             pass
-
         self.stop()
 
 class VerifySystem(commands.Cog):
@@ -80,7 +57,7 @@ class VerifySystem(commands.Cog):
 
         embed = discord.Embed(
             title="New Member",
-            description=f"{member.mention} has joined the server.\n\nPlease approve or deny access. <@1372695389555130420>",
+            description=f"{member.mention} has joined the server.\n\nPlease approve or deny access.",
             color=0xFF3AAF
         )
         if guild_icon_url:
@@ -90,18 +67,6 @@ class VerifySystem(commands.Cog):
 
         view = VerifyButtons(member)
         await channel.send(embed=embed, view=view)
-
-        # DM welcome embed
-        try:
-            dm_embed = discord.Embed(
-                title=f"Welcome to {member.guild.name}",
-                description=f"Hey {member.mention}, you’re currently awaiting access approval. In the meantime, you can join the <#1381763578977194035> channel to patiently wait to be moved.",
-                color=0xFF3AAF
-            )
-            dm_embed.set_footer(text=f"WE'RE ALL IN LOVE {datetime.datetime.now().year}")
-            await member.send(embed=dm_embed)
-        except:
-            pass
 
 async def setup(bot):
     await bot.add_cog(VerifySystem(bot))
