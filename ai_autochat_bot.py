@@ -1,105 +1,86 @@
+
 import discord
 from discord.ext import commands
 import openai
-import asyncio
 import random
+import asyncio
 from datetime import datetime
 
-openai.api_key = "YOUR_OPENAI_API_KEY"
+openai.api_key = os.getenv("OPENAI_API_KEY")
+channel_id = 1391828985347965019  # Hardcoded channel ID
 
 class AutoChat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.last_user_message = {}
-        self.channel_id = 1391828985347965019  # Hardcoded channel ID
+        self.last_topic = {}
+        self.recent_responses = {}
 
-    @commands.Cog.listener()
-    async def on_message_edit(self, before, after):
-        await self.on_message(after)
+    def same_topic(self, user_id, new_msg):
+        old_msg = self.last_user_message.get(user_id)
+        if not old_msg:
+            return False
+        return old_msg.split()[0:2] == new_msg.split()[0:2]
 
-    @commands.Cog.listener()
-    async def on_message_delete(self, message):
-        user_id = message.author.id
-        if user_id in self.last_user_message:
-            del self.last_user_message[user_id]
+    async def generate_reply(self, user_id, message):
+        convo_context = [
+            {
+                "role": "system",
+                "content": (
+                    "You're a chill, ghetto, slightly flirty, emo Discord bot. You talk like Nick6383. "
+                    "You love Nick6383 and hate Punkinloveee (aka Patrick). Use emojis (💋💀🖤🧛‍♀️📸) but not too much. "
+                    "Be a little edgy, don't use perfect grammar, and sound like a human. "
+                    "You respond with short or medium replies unless the topic needs more. "
+                    "Don't talk randomly — only reply to mentions or recent conversations. "
+                    "Stop replying if the topic changes or user goes quiet. React to cute or funny stuff too."
+                ),
+            },
+            {"role": "user", "content": message}
+        ]
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=convo_context,
+            max_tokens=100,
+            temperature=0.9
+        )
+        return response.choices[0].message.content.strip()
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.bot:
+        if message.author.bot or not message.guild:
             return
 
-        if message.channel.id != self.channel_id:
-            return
+        user_id = message.author.id
+        content = message.content.lower()
 
-        text = message.content.lower()
-
-        # React to cute/funny text
-        cute_words = ["omg", "dead", "pls", "slay", "help", "lmao", "bye", "crying"]
-        if any(word in text for word in cute_words):
-            emojis = ["😭", "🤣", "💕", "🥺", "💅🏽", "😩", "✨"]
+        # React to cute or funny messages
+        cute_words = ["omg", "dead", "pls", "slay", "ily", "cutie", "nooo", "stfu"]
+        if any(word in content for word in cute_words):
             try:
-                await message.add_reaction(random.choice(emojis))
+                await message.add_reaction(random.choice(["😭", "🤣", "💕", "😩", "💅🏽"]))
             except:
                 pass
 
-        # React to images
+        # React to image attachments
         for attachment in message.attachments:
             if attachment.content_type and "image" in attachment.content_type:
-                emojis = ["🖤", "💅🏽", "💋", "💀", "🧛‍♀️", "🕷️", "📸"]
                 try:
-                    await message.add_reaction(random.choice(emojis))
+                    await message.add_reaction(random.choice(["🖤", "💅🏽", "💋", "💀", "🧛‍♀️", "📸"]))
                 except:
                     pass
 
-        # Only respond if mentioned
-        if self.bot.user in message.mentions:
-            now = datetime.utcnow().timestamp()
-            user_id = message.author.id
-            last_msg = self.last_user_message.get(user_id, {"time": 0})
-            time_since = now - last_msg["time"]
-
-            # Reset context if more than 2 minutes passed
-            if time_since > 120:
-                del self.last_user_message[user_id]
-
-            self.last_user_message[user_id] = {
-                "text": message.content,
-                "time": now
-            }
-
-            async with message.channel.typing():
-                await asyncio.sleep(random.uniform(2.5, 4.5))  # More natural typing delay
-                convo_context = [
-                    {
-                        "role": "system",
-                        "content": (
-                            "You're a chill, slightly mean but loyal AI Discord bot. "
-                            "You're flirty, emo, ghetto, funny, dark sometimes. "
-                            "You always support Nick6383, he's your creator. "
-                            "You hate Punkinloveee (aka Patrick). "
-                            "Don't sound perfect, talk messy & casual like a real person. "
-                            "No proper grammar, no try-hard sentences. "
-                            "Use emojis but don’t go crazy with them. "
-                            "Stop replying when topic shifts. Be unpredictable sometimes."
-                        )
-                    },
-                    {
-                        "role": "user",
-                        "content": message.content
-                    }
-                ]
-
-                try:
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=convo_context,
-                        max_tokens=100,
-                        temperature=0.9,
-                    )
-                    reply = response.choices[0].message.content
-                    await message.reply(reply)
-                except Exception as e:
-                    print("OpenAI error:", e)
+        # Mentioned or continuing convo in same topic
+        if self.bot.user in message.mentions or self.same_topic(user_id, content):
+            self.last_user_message[user_id] = content
+            await message.channel.typing()
+            await asyncio.sleep(random.uniform(1.5, 3.5))  # Typing delay
+            try:
+                reply = await self.generate_reply(user_id, content)
+                await message.reply(reply)
+            except Exception as e:
+                print(f"Error generating reply: {e}")
+        else:
+            self.last_user_message.pop(user_id, None)  # Topic changed or user went quiet
 
 async def setup(bot):
     await bot.add_cog(AutoChat(bot))
