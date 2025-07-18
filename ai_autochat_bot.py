@@ -1,61 +1,80 @@
-
 import discord
-from discord.ext import commands
 import openai
 import asyncio
-import datetime
+import random
 import os
+from datetime import datetime
 
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents)
+intents = discord.Intents.default()
+intents.messages = True
+intents.message_content = True
+client = discord.Client(intents=intents)
 
-openai.api_key = "YOUR_OPENAI_API_KEY"
+openai.api_key = "sk-..."  # Your actual key should already be here
 
-class AutoChat(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.last_user_message = {}
-        self.user_threads = {}
+bot_user_id = None
+active_users = {}
+context_memory = {}
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("✅ Loaded ai_autochat_bot")
+async def send_typing_and_reply(message, response):
+    async with message.channel.typing():
+        await asyncio.sleep(random.uniform(1.5, 3.5))  # simulate typing delay
+    await message.channel.send(response)
 
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot or not message.guild:
-            return
+def generate_prompt(username, message_content, past_memory):
+    now = datetime.now().strftime("%I:%M %p")
+    memory_block = "\n".join(past_memory[-5:]) if past_memory else ""
+    return f"""You are a cute, dirty pop, flirty, goth, emo AI Discord bot with a bit of attitude. You support Nick6383, always ride for him, and you're based in Pennsylvania EST. It's {now}.
 
-        if self.bot.user in message.mentions or self.user_threads.get(message.author.id):
-            async with message.channel.typing():
-                await asyncio.sleep(2.5)
+Here's the convo so far:
+{memory_block}
+{username}: {message_content}
 
-                user_id = message.author.id
-                content = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
+Now reply in character as the bot, in a realistic and short message (1–2 sentences max), using emojis and slang when needed. Keep it sassy or sweet, not dramatic or overly gay — just like Nick6383 wants.
+"""
 
-                now = datetime.datetime.now()
-                thread = self.user_threads.get(user_id, [])
-                thread.append({"role": "user", "content": content})
-                if len(thread) > 10:
-                    thread = thread[-10:]
+@client.event
+async def on_ready():
+    global bot_user_id
+    bot_user_id = client.user.id
+    print(f"Bot is ready. Logged in as {client.user}")
 
-                self.user_threads[user_id] = thread
+@client.event
+async def on_message(message):
+    if message.author.bot:
+        return
 
-                try:
-                    response = await openai.ChatCompletion.acreate(
-                        model="gpt-3.5-turbo",
-                        messages=[{"role": "system", "content": "Act like a cute, dirty pop, ghetto, flirty AI that loves Nick6383. Be edgy, fun, and a little mean."}] + thread,
-                        temperature=0.9
-                    )
-                    reply = response.choices[0].message.content.strip()
+    user_id = message.author.id
+    content = message.content.lower()
 
-                    thread.append({"role": "assistant", "content": reply})
-                    self.user_threads[user_id] = thread
+    mentioned = client.user in message.mentions
 
-                    await message.reply(reply)
-                except Exception as e:
-                    print(f"OpenAI error: {e}")
-                    await message.reply("Ugh I'm tired rn 💅🏽")
+    if mentioned or active_users.get(user_id, False):
+        if mentioned:
+            active_users[user_id] = True
+            context_memory.setdefault(user_id, [])
 
-async def setup(bot):
-    await bot.add_cog(AutoChat(bot))
+        context_memory[user_id].append(f"{message.author.display_name}: {message.content}")
+        context_memory[user_id] = context_memory[user_id][-10:]  # keep last 10
+
+        try:
+            prompt = generate_prompt(message.author.display_name, message.content, context_memory[user_id])
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You're a dirty pop Discord bot with a little sass and flirty energy."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            ai_reply = response.choices[0].message['content']
+            await send_typing_and_reply(message, ai_reply)
+        except Exception as e:
+            print(f"AI error: {e}")
+            await message.channel.send("omg i can't talk rn 💀")
+
+        # stop convo if user topic gets too different
+        if any(word in content for word in ["math", "news", "politics", "boring", "weather", "stocks"]):
+            active_users[user_id] = False
+
+def setup(bot):
+    bot.add_listener(on_message)
