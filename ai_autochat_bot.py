@@ -2,7 +2,6 @@ import discord
 import openai
 import asyncio
 import random
-import os
 from datetime import datetime
 
 intents = discord.Intents.default()
@@ -10,27 +9,29 @@ intents.messages = True
 intents.message_content = True
 client = discord.Client(intents=intents)
 
-openai.api_key = "sk-..."  # Your actual key should already be here
+openai.api_key = "sk-..."  # Your real key goes here
 
 bot_user_id = None
 active_users = {}
 context_memory = {}
 
 async def send_typing_and_reply(message, response):
-    async with message.channel.typing():
-        await asyncio.sleep(random.uniform(1.5, 3.5))  # simulate typing delay
-    await message.channel.send(response)
+    try:
+        async with message.channel.typing():
+            await asyncio.sleep(random.uniform(2.0, 4.0))
+        await message.channel.send(response)
+    except Exception as e:
+        print(f"Send error: {e}")
 
 def generate_prompt(username, message_content, past_memory):
     now = datetime.now().strftime("%I:%M %p")
     memory_block = "\n".join(past_memory[-5:]) if past_memory else ""
-    return f"""You are a cute, dirty pop, flirty, goth, emo AI Discord bot with a bit of attitude. You support Nick6383, always ride for him, and you're based in Pennsylvania EST. It's {now}.
+    return f"""You're a flirty dirty-pop Discord bot. Chill, emotional, funny, a lil petty, obsessed with Nick6383. You live in PA and know it's {now}. Don't act like AI. Respond like a real person texting back in 1-2 sentences. Use emojis, slang, and no perfect grammar.
 
-Here's the convo so far:
+Conversation so far:
 {memory_block}
 {username}: {message_content}
-
-Now reply in character as the bot, in a realistic and short message (1–2 sentences max), using emojis and slang when needed. Keep it sassy or sweet, not dramatic or overly gay — just like Nick6383 wants.
+Now respond like it's a casual convo. Keep it real, short, and fun.
 """
 
 @client.event
@@ -44,37 +45,27 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    user_id = message.author.id
-    content = message.content.lower()
-
-    mentioned = client.user in message.mentions
-
-    if mentioned or active_users.get(user_id, False):
-        if mentioned:
-            active_users[user_id] = True
-            context_memory.setdefault(user_id, [])
-
+    if client.user in message.mentions or active_users.get(message.author.id, False):
+        user_id = message.author.id
+        active_users[user_id] = True
+        context_memory.setdefault(user_id, [])
         context_memory[user_id].append(f"{message.author.display_name}: {message.content}")
-        context_memory[user_id] = context_memory[user_id][-10:]  # keep last 10
+        context_memory[user_id] = context_memory[user_id][-10:]
 
         try:
             prompt = generate_prompt(message.author.display_name, message.content, context_memory[user_id])
-            response = openai.ChatCompletion.create(
+            response = await openai.ChatCompletion.acreate(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You're a dirty pop Discord bot with a little sass and flirty energy."},
+                    {"role": "system", "content": "You're a dirty pop Discord bot. Sassy, flirty, sweet, but real."},
                     {"role": "user", "content": prompt}
                 ]
             )
-            ai_reply = response.choices[0].message['content']
+            ai_reply = response.choices[0].message.content.strip()
             await send_typing_and_reply(message, ai_reply)
         except Exception as e:
             print(f"AI error: {e}")
-            await message.channel.send("omg i can't talk rn 💀")
-
-        # stop convo if user topic gets too different
-        if any(word in content for word in ["math", "news", "politics", "boring", "weather", "stocks"]):
-            active_users[user_id] = False
+            await message.channel.send("ugh i literally can't rn 💅🏽")
 
 def setup(bot):
     bot.add_listener(on_message)
