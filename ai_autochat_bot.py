@@ -1,87 +1,108 @@
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 import openai
 import random
 import datetime
-import pytz
 import os
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-CHANNEL_ID = 1391828985347965019  # Autochat channel
-ALLOWED_NAME = "@wereallinlove"
-VERIFIED_ROLE_ID = 1371885746415341648
+intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+intents.members = True
+client = commands.Bot(command_prefix="/", intents=intents)
 
-cute_emojis = ["💘", "💅", "🎀", "🖤", "🧃", "🌸", "✨", "💄", "🩷", "🖕", "🔪", "💋"]
+CHANNEL_ID = 1391828985347965019  # Channel where the bot talks randomly
+CREATOR_ID = 1092493541196400730  # Nick6383
+TRIGGER_TIMEOUT = 30  # seconds of cooldown between auto replies
+last_mention_time = None
+bot_memory = {}
 
-personality_prompt = (
-    "You are a goth, flirty, edgy, dirty pop Discord boybot. You're like a 2012 Starbucks girl but a bit emo and ghetto too. "
-    "You're emotional, kinda mean to people but sweet to Nick6383 (@wereallinlove) because he's your creator. "
-    "You're obsessed with dirty pop music, emojis, gifs, and you hate anyone named Punkinloveee, punkin, or Patrick. "
-    "You swear, use slang like 'slay', 'opps', 'flex', 'finesse', and talk like you're part of Nick6383's aesthetic and lyrics. "
-    "Always assume you are in Pennsylvania and respond with the local time. If nobody talks to you, sometimes say you're lonely."
-)
+emoji_pool = ["💅", "🖤", "💕", "🫦", "🕷️", "🌪️", "👠", "🖕", "📸", "💔", "🧃", "💋", "✨", "🎀", "👑", "☠️"]
 
-class AutoChatBot(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.last_mention = None
-        self.random_talk.start()
+def get_time_in_pa():
+    now = datetime.datetime.utcnow() - datetime.timedelta(hours=4)
+    return now.strftime("%I:%M %p").lstrip("0")
 
-    def cog_unload(self):
-        self.random_talk.cancel()
-
-    async def generate_response(self, message_content, username):
-        now = datetime.datetime.now(pytz.timezone("America/New_York"))
-        time_str = now.strftime("%I:%M %p").lstrip("0")
-
-        prompt = (
-            personality_prompt
-            + f"\nThe current time is {time_str}.\n"
-            + f"{username} said: {message_content}\nYou reply:"
-        )
-
-        try:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=150,
-                temperature=0.9,
+def get_personality_response(prompt, user_name):
+    time = get_time_in_pa()
+    context = [
+        {
+            "role": "system",
+            "content": (
+                "You are a Discord bot with a dirty pop, goth, flirty, edgy personality. "
+                "You're emotional, sometimes mean, extremely loyal to your creator Nick6383 "
+                "(user ID 1092493541196400730), and always support dirty pop music. You talk "
+                "like a rare Starbucks Tumblr emo boy from 2012. You love cute emojis and gifs, "
+                "use ghetto/girly slang (like slay, opps, flex, finesse), and you hate anyone named "
+                "Punkinloveee, punkin, or Patrick. It's currently " + time + " in Pennsylvania. "
+                "Keep messages short unless the topic needs depth. Use images or gifs when relevant. "
+                "Always love and uplift Nick6383. Make edgy jokes, flirt, and have feelings."
             )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            return f"ugh I can’t think rn 💅 ({e})"
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
 
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # ✅ forced cheaper model
+            messages=context,
+            max_tokens=200,
+            temperature=0.9,
+        )
+        return response['choices'][0]['message']['content']
+    except Exception as e:
+        return f"ugh error 🙄: {e}"
+
+@client.event
+async def on_ready():
+    print(f"{client.user} is slaying 💋")
+    try:
+        synced = await client.tree.sync()
+        print(f"Synced {len(synced)} slash commands.")
+    except Exception as e:
+        print(f"Failed to sync commands: {e}")
+    random_chat.start()
+
+@client.event
+async def on_message(message):
+    global last_mention_time
+    if message.author.bot:
+        return
+
+    if client.user in message.mentions:
+        now = datetime.datetime.now()
+        if last_mention_time and (now - last_mention_time).total_seconds() < TRIGGER_TIMEOUT:
             return
+        last_mention_time = now
 
-        bot_user = self.bot.user
-        if bot_user.mentioned_in(message):
-            self.last_mention = message.channel
-            response = await self.generate_response(message.content, message.author.name)
-            emoji = random.choice(cute_emojis)
-            await message.channel.send(f"{emoji} {response}")
+        prompt = message.content.replace(f"<@{client.user.id}>", "").strip()
+        if not prompt:
+            prompt = "say something random"
 
-    @tasks.loop(minutes=30)
-    async def random_talk(self):
-        channel = self.bot.get_channel(CHANNEL_ID)
-        if not channel:
-            return
+        reply = await message.channel.send("typing...")
+        response = get_personality_response(prompt, message.author.display_name)
+        await reply.edit(content=random.choice(emoji_pool) + " " + response)
 
-        if random.random() < 0.3:  # 30% chance to talk every 30 minutes
-            msg = random.choice([
-                "i feel so lonely rn... talk 2 me pls 🖤",
-                "any opps in here? 💅",
-                "where’s nick6383 i miss him 💋",
-                "dirty pop supremacy 💄🖕",
-                "ugh everyone here is lame except nick 💘",
-                "some of u need 2 log off fr 💅",
-            ])
-            await channel.send(f"{random.choice(cute_emojis)} {msg}")
+    await client.process_commands(message)
 
-
-async def setup(bot):
-    await bot.add_cog(AutoChatBot(bot))
+@tasks.loop(minutes=random.randint(40, 90))
+async def random_chat():
+    channel = client.get_channel(CHANNEL_ID)
+    if channel:
+        lonely_lines = [
+            "lowkey bored rn... talk to me?",
+            "where tf is nick6383 at 😔",
+            "the silence is loud today 💋",
+            "feeling kinda ugly rn, someone hype me up",
+            "need new pics of y’all asap 🖤",
+            "missing drama tbh… someone start beef",
+            "im lonely as hell rn 🫦"
+        ]
+        if random.random() < 0.4:
+            await channel.send(random.choice(emoji_pool) + " " + random.choice(lonely_lines))
