@@ -1,105 +1,74 @@
+
 import discord
-from discord.ext import commands
 import openai
-import asyncio
 import random
+import asyncio
+import os
+from discord.ext import commands
 from datetime import datetime
 
-openai.api_key = "YOUR_OPENAI_API_KEY"
+intents = discord.Intents.default()
+intents.messages = True
+intents.message_content = True
 
-class AutoChat(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.last_user_message = {}
-        self.channel_id = 1391828985347965019  # Hardcoded channel ID
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-    @commands.Cog.listener()
-    async def on_message_edit(self, before, after):
-        await self.on_message(after)
+openai.api_key = "sk-..."  # Replace with your real OpenAI key
 
-    @commands.Cog.listener()
-    async def on_message_delete(self, message):
-        user_id = message.author.id
-        if user_id in self.last_user_message:
-            del self.last_user_message[user_id]
+memory = {}
 
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
-            return
+@bot.event
+async def on_ready():
+    print(f"✅ AI AutoChat loaded. Logged in as {bot.user}")
 
-        if message.channel.id != self.channel_id:
-            return
+def is_topic_changed(old_msg, new_msg):
+    if not old_msg:
+        return False
+    return len(set(old_msg.lower().split()) & set(new_msg.lower().split())) < 2
 
-        text = message.content.lower()
+@bot.event
+async def on_message(message):
+    if message.author.bot or not message.guild:
+        return
 
-        # React to cute/funny text
-        cute_words = ["omg", "dead", "pls", "slay", "help", "lmao", "bye", "crying"]
-        if any(word in text for word in cute_words):
-            emojis = ["😭", "🤣", "💕", "🥺", "💅🏽", "😩", "✨"]
-            try:
-                await message.add_reaction(random.choice(emojis))
-            except:
-                pass
+    user_id = message.author.id
+    content = message.content.strip()
+    mentioned = bot.user in message.mentions
+    recent = memory.get(user_id)
+    in_convo = recent and (datetime.utcnow() - recent["time"]).seconds < 120 and not is_topic_changed(recent["text"], content)
 
-        # React to images
-        for attachment in message.attachments:
-            if attachment.content_type and "image" in attachment.content_type:
-                emojis = ["🖤", "💅🏽", "💋", "💀", "🧛‍♀️", "🕷️", "📸"]
-                try:
-                    await message.add_reaction(random.choice(emojis))
-                except:
-                    pass
-
-        # Only respond if mentioned
-        if self.bot.user in message.mentions:
-            now = datetime.utcnow().timestamp()
-            user_id = message.author.id
-            last_msg = self.last_user_message.get(user_id, {"time": 0})
-            time_since = now - last_msg["time"]
-
-            # Reset context if more than 2 minutes passed
-            if time_since > 120:
-                del self.last_user_message[user_id]
-
-            self.last_user_message[user_id] = {
-                "text": message.content,
-                "time": now
-            }
-
+    if mentioned or in_convo:
+        try:
             async with message.channel.typing():
-                await asyncio.sleep(random.uniform(2.5, 4.5))  # More natural typing delay
-                convo_context = [
-                    {
-                        "role": "system",
-                        "content": (
-                            "You're a chill, slightly mean but loyal AI Discord bot. "
-                            "You're flirty, emo, ghetto, funny, dark sometimes. "
-                            "You always support Nick6383, he's your creator. "
-                            "You hate Punkinloveee (aka Patrick). "
-                            "Don't sound perfect, talk messy & casual like a real person. "
-                            "No proper grammar, no try-hard sentences. "
-                            "Use emojis but don’t go crazy with them. "
-                            "Stop replying when topic shifts. Be unpredictable sometimes."
-                        )
-                    },
-                    {
-                        "role": "user",
-                        "content": message.content
-                    }
-                ]
+                await asyncio.sleep(random.uniform(2.5, 4.5))
 
-                try:
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=convo_context,
-                        max_tokens=100,
-                        temperature=0.9,
+            prompt = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a Discord bot that sounds casual, emo, flirty, and ghetto. "
+                        "You support Nick6383 no matter what, hate Punkinloveee, and talk like a cute but bitchy dirty pop boy. "
+                        "Use slang, messy grammar, and emojis like 🖤💅🏽💋💀🧛‍♀️🕷️📸. Be short unless it’s a deep question."
                     )
-                    reply = response.choices[0].message.content
-                    await message.reply(reply)
-                except Exception as e:
-                    print("OpenAI error:", e)
+                },
+                {
+                    "role": "user",
+                    "content": content
+                }
+            ]
 
-async def setup(bot):
-    await bot.add_cog(AutoChat(bot))
+            response = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=prompt,
+                max_tokens=120,
+                temperature=0.85,
+            )
+
+            reply = response.choices[0].message.content.strip()
+            await message.channel.send(reply)
+            memory[user_id] = {"text": content, "time": datetime.utcnow()}
+
+        except Exception as e:
+            print(f"[OpenAI Error] {e}")
+
+bot.run("your-bot-token-here")
