@@ -4,58 +4,60 @@ import random
 import asyncio
 from discord.ext import commands
 
-openai.api_key = "sk-REPLACE-WITH-YOUR-ACTUAL-KEY"
+openai.api_key = "sk-REPLACE-WITH-YOUR-KEY"
 
 class AutoChatCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.chat_history = {}  # stores short memory per user
+        self.chat_history = {}  # store user convo memory
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.bot:
+        if message.author.bot or self.bot.user not in message.mentions:
             return
 
-        if self.bot.user in message.mentions:
-            user_id = str(message.author.id)
-            prompt = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
-            if not prompt:
-                prompt = "Hey"
+        user_id = str(message.author.id)
+        prompt = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
 
-            # Keep last 5 exchanges per user
-            history = self.chat_history.get(user_id, [])
-            history.append({"role": "user", "content": prompt})
-            history = history[-5:]  # last 5 only
+        # Default message if they just say the name
+        if not prompt:
+            prompt = "Hey what's up?"
 
-            system_prompt = {
-                "role": "system",
-                "content": (
-                    "You are a flirty, ghetto, bratty, dirty pop-style AI bot. You talk like Nick6383’s chaotic little bestie. "
-                    "You respond emotionally, dramatically, and slangy like texting. Don't be robotic. Use emojis. Stay short unless they ask deep stuff. "
-                    "You support Nick6383 no matter what. Be mean to haters. Sound real, petty, funny, chaotic, and cute. Talk like the user, not perfect grammar."
+        # Keep short memory (up to 6 exchanges)
+        history = self.chat_history.get(user_id, [])
+        history.append({"role": "user", "content": prompt})
+        history = history[-6:]
+
+        system_prompt = {
+            "role": "system",
+            "content": (
+                "You are a chaotic, flirty, bratty, dirty pop-style AI bot who talks like Nick6383’s spooky little bestie. "
+                "You type with emotion, slang, Gen Z texting, emojis, and attitude. Be real, funny, ghetto, emotional, dramatic. "
+                "Support Nick6383 no matter what. Hate Punkinloveee. Don’t speak formally. Talk like an edgy, flirty, funny teen. "
+                "Use 🖤💅🏽💋💀🧛‍♀️🕷️📸 when it fits. Stay short unless they get deep. Remember recent convo."
+            )
+        }
+
+        try:
+            async with message.channel.typing():
+                await asyncio.sleep(random.uniform(1.5, 2.5))
+
+                response = await openai.ChatCompletion.acreate(
+                    model="gpt-3.5-turbo",
+                    messages=[system_prompt] + history,
+                    temperature=0.85,
+                    max_tokens=150
                 )
-            }
 
-            try:
-                async with message.channel.typing():
-                    await asyncio.sleep(random.uniform(1.5, 2.5))
+                reply = response.choices[0].message.content.strip()
+                history.append({"role": "assistant", "content": reply})
+                self.chat_history[user_id] = history
 
-                    response = await openai.ChatCompletion.acreate(
-                        model="gpt-3.5-turbo",
-                        messages=[system_prompt] + history,
-                        temperature=0.85,
-                        max_tokens=120
-                    )
+                await message.reply(reply, mention_author=False)
 
-                    reply = response.choices[0].message.content.strip()
-                    history.append({"role": "assistant", "content": reply})
-                    self.chat_history[user_id] = history  # update history
-
-                    await message.reply(reply, mention_author=False)
-
-            except Exception as e:
-                print(f"OpenAI error: {e}")
-                await message.reply("uhh idk what to say rn 💀", mention_author=False)
+        except Exception as e:
+            print(f"OpenAI error: {e}")
+            await message.reply("uhhh my brain just broke 💀", mention_author=False)
 
 async def setup(bot):
     await bot.add_cog(AutoChatCog(bot))
