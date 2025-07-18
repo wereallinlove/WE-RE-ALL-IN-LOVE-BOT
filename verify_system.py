@@ -14,7 +14,7 @@ class Verify(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        # Send a DM to the new member
+        # 📨 Send DM to the new user
         try:
             welcome_embed = discord.Embed(
                 title="🌀 Welcome to the server",
@@ -25,24 +25,30 @@ class Verify(commands.Cog):
                 ),
                 color=discord.Color.pink()
             )
-            welcome_embed.set_thumbnail(url=member.guild.icon.url if member.guild.icon else discord.Embed.Empty)
+            if member.guild.icon:
+                welcome_embed.set_thumbnail(url=member.guild.icon.url)
             welcome_embed.set_footer(text=f"WE'RE ALL IN LOVE {datetime.now().year}")
             await member.send(embed=welcome_embed)
-        except:
-            pass  # Ignore if DMs are closed
+        except Exception as e:
+            print(f"[WARN] Could not DM new member: {e}")
 
-        # Send the embed in the verification channel
-        channel = member.guild.get_channel(VERIFY_CHANNEL_ID)
-        if channel:
-            embed = discord.Embed(
-                title="New Member",
-                description=f"{member.mention} has joined the server.\n<@{APPROVE_ROLE_ID}> — Please approve or deny access.",
-                color=discord.Color.pink()
-            )
-            embed.set_thumbnail(url=member.display_avatar.url)
-            embed.set_footer(text=f"WE'RE ALL IN LOVE {datetime.now().year}")
-            view = ApproveDenyView(member)
-            await channel.send(embed=embed, view=view)
+        # 📢 Send embed in server verification channel
+        try:
+            channel = member.guild.get_channel(VERIFY_CHANNEL_ID)
+            if channel:
+                embed = discord.Embed(
+                    title="New Member",
+                    description=f"{member.mention} has joined the server.\n<@{APPROVE_ROLE_ID}> — Please approve or deny access.",
+                    color=discord.Color.pink()
+                )
+                embed.set_thumbnail(url=member.display_avatar.url)
+                embed.set_footer(text=f"WE'RE ALL IN LOVE {datetime.now().year}")
+                view = ApproveDenyView(member)
+                await channel.send(embed=embed, view=view)
+            else:
+                print("[ERROR] Verification channel not found.")
+        except Exception as e:
+            print(f"[ERROR] Failed to send server embed: {e}")
 
 class ApproveDenyView(discord.ui.View):
     def __init__(self, member):
@@ -52,7 +58,7 @@ class ApproveDenyView(discord.ui.View):
     @discord.ui.button(label="Approve", style=discord.ButtonStyle.success)
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
         if APPROVE_ROLE_ID not in [role.id for role in interaction.user.roles]:
-            await interaction.response.send_message("You don't have permission to approve.", ephemeral=True)
+            await interaction.response.send_message("❌ You don't have permission to approve.", ephemeral=True)
             return
 
         role = interaction.guild.get_role(VERIFIED_ROLE_ID)
@@ -64,7 +70,7 @@ class ApproveDenyView(discord.ui.View):
                 color=discord.Color.green()
             ))
 
-        # Send DM to the user
+        # ✅ DM the user
         try:
             approved_embed = discord.Embed(
                 title="✅ You’ve Been Approved!",
@@ -72,26 +78,27 @@ class ApproveDenyView(discord.ui.View):
                 color=discord.Color.green()
             )
             await self.member.send(embed=approved_embed)
-        except:
-            pass
+        except Exception as e:
+            print(f"[WARN] Could not DM approved member: {e}")
 
         self.stop()
 
     @discord.ui.button(label="Deny", style=discord.ButtonStyle.danger)
     async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
         if APPROVE_ROLE_ID not in [role.id for role in interaction.user.roles]:
-            await interaction.response.send_message("You don't have permission to deny.", ephemeral=True)
+            await interaction.response.send_message("❌ You don't have permission to deny.", ephemeral=True)
             return
 
+        # ❌ DM the user before kicking
         try:
             denied_embed = discord.Embed(
                 title="❌ You’ve Been Denied",
-                description=f"Your request to join **{interaction.guild.name}** was denied. Better luck next time.",
+                description=f"Your request to join **{interaction.guild.name}** was denied.",
                 color=discord.Color.red()
             )
             await self.member.send(embed=denied_embed)
-        except:
-            pass
+        except Exception as e:
+            print(f"[WARN] Could not DM denied member: {e}")
 
         await self.member.kick(reason="Denied during verification")
         await interaction.response.send_message(embed=discord.Embed(
