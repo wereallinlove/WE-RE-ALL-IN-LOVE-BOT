@@ -3,3 +3,4 @@ yt-dlp
 PyNaCl
 openai
 python-dotenv
+pytz
