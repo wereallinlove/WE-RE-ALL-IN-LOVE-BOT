@@ -24,6 +24,7 @@ EXTENSIONS = [
     "dm_messenger",
     "bot_speak_commands",
     "ai_autochat_bot",
+    "tempchannel_command",
     "logs"
 ]
 
