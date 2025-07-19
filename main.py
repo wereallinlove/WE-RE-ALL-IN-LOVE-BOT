@@ -23,7 +23,6 @@ EXTENSIONS = [
     "quote_command",
     "dm_messenger",
     "bot_speak_commands",
-    "ai_autochat_bot",
     "logs"
 ]
 
