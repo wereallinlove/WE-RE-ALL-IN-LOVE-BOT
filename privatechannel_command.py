@@ -14,7 +14,7 @@ CATEGORY_ID = 1395539999537238106
 class PrivateChannel(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.active_channels = {}  # channel_id: owner_id
+        self.active_channels = {}  # {channel_id: owner_id}
 
     @app_commands.command(name="privatechannel", description="Create your own private voice channel.")
     @app_commands.checks.has_role(PRIVATE_ROLE_ID)
@@ -44,8 +44,24 @@ class PrivateChannel(commands.Cog):
             ephemeral=True
         )
 
+        # Start a task to monitor join/leave and assign/remove move role
+        asyncio.create_task(self._monitor_voice_presence(channel, user))
+
         # Start deletion timer if user doesn't join
         await self._start_inactivity_timer(channel, user)
+
+    async def _monitor_voice_presence(self, channel, user):
+        guild = channel.guild
+        while await self.channel_exists(channel):
+            member = guild.get_member(user.id)
+            if member and member.voice and member.voice.channel == channel:
+                # User is in their private channel
+                await self._grant_move_role(member)
+            else:
+                # User is not in their channel
+                await self._remove_move_role(member)
+
+            await asyncio.sleep(5)  # Check every 5 seconds
 
     async def _start_inactivity_timer(self, channel, user):
         await asyncio.sleep(120)
@@ -55,9 +71,11 @@ class PrivateChannel(commands.Cog):
         if voice_state is None or voice_state.channel != channel:
             try:
                 await channel.delete()
-                await self._remove_move_role(user)
             except:
                 pass
+
+            await self._remove_move_role(user)
+            self.active_channels.pop(channel.id, None)
 
             try:
                 embed = discord.Embed(
@@ -69,40 +87,28 @@ class PrivateChannel(commands.Cog):
             except:
                 pass
 
-            self.active_channels.pop(channel.id, None)
-
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
-        # Check if the user is the owner of one of the tracked private channels
-        move_role = member.guild.get_role(MOVE_ROLE_ID)
-
-        # User joined a channel
-        if after.channel and after.channel.id in self.active_channels:
-            owner_id = self.active_channels.get(after.channel.id)
-            if member.id == owner_id:
-                if move_role and move_role not in member.roles:
-                    try:
-                        await member.add_roles(move_role)
-                    except:
-                        pass
-
-        # User left a channel
-        if before.channel and before.channel.id in self.active_channels:
-            owner_id = self.active_channels.get(before.channel.id)
-            if member.id == owner_id:
-                if move_role and move_role in member.roles:
-                    try:
-                        await member.remove_roles(move_role)
-                    except:
-                        pass
-
-    async def _remove_move_role(self, user):
+    async def _grant_move_role(self, member):
         try:
-            role = user.guild.get_role(MOVE_ROLE_ID)
-            if role and role in user.roles:
-                await user.remove_roles(role)
-        except:
-            pass
+            role = member.guild.get_role(MOVE_ROLE_ID)
+            if role and role not in member.roles:
+                await member.add_roles(role)
+        except Exception as e:
+            print(f"[ERROR] Couldn't give .move role: {e}")
+
+    async def _remove_move_role(self, member):
+        try:
+            role = member.guild.get_role(MOVE_ROLE_ID)
+            if role and role in member.roles:
+                await member.remove_roles(role)
+        except Exception as e:
+            print(f"[ERROR] Couldn't remove .move role: {e}")
+
+    async def channel_exists(self, channel: discord.VoiceChannel):
+        try:
+            await channel.guild.fetch_channel(channel.id)
+            return True
+        except discord.NotFound:
+            return False
 
 async def setup(bot):
     await bot.add_cog(PrivateChannel(bot))
