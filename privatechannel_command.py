@@ -1,8 +1,8 @@
 # privatechannel_command.py
 
 import discord
-from discord import app_commands
 from discord.ext import commands
+from discord import app_commands
 import asyncio
 from datetime import datetime, timedelta
 
@@ -14,7 +14,7 @@ CATEGORY_ID = 1395539999537238106
 class PrivateChannel(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.active_channels = {}
+        self.active_channels = {}  # channel_id: owner_id
 
     @app_commands.command(name="privatechannel", description="Create your own private voice channel.")
     @app_commands.checks.has_role(PRIVATE_ROLE_ID)
@@ -23,120 +23,86 @@ class PrivateChannel(commands.Cog):
         guild = interaction.guild
         category = guild.get_channel(CATEGORY_ID)
 
-        base_name = f"{user.display_name} · @{user.name}'s channel"
-
+        channel_name = f"{user.display_name} · @{user.name}'s channel"
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
             guild.get_role(MEMBER_ROLE_ID): discord.PermissionOverwrite(view_channel=True, connect=False),
             user: discord.PermissionOverwrite(view_channel=True, connect=True, manage_channels=True, move_members=True),
         }
 
+        # Create the private voice channel
         channel = await guild.create_voice_channel(
-            name=base_name,
+            name=channel_name,
             overwrites=overwrites,
             category=category
         )
 
-        end_time = datetime.utcnow() + timedelta(minutes=2)
-        self.active_channels[channel.id] = {"owner": user.id, "timeout": end_time, "joined": False}
+        self.active_channels[channel.id] = user.id
 
         await interaction.response.send_message(
             f"✅ Created your private channel: {channel.mention}\n⚠️ You have 2 minutes to join or it will be deleted for inactivity.",
             ephemeral=True
         )
 
-        asyncio.create_task(self._watch_initial_join(channel, user, end_time))
+        # Start deletion timer if user doesn't join
+        await self._start_inactivity_timer(channel, user)
 
-    async def _watch_initial_join(self, channel, user, end_time):
-        guild = channel.guild
-        while True:
-            if not await self.channel_exists(channel):
-                return
+    async def _start_inactivity_timer(self, channel, user):
+        await asyncio.sleep(120)
 
-            now = datetime.utcnow()
-            if now >= end_time:
-                await self._delete_channel(channel, user, "expired due to inactivity.")
-                return
+        # If the channel still exists and user hasn’t joined, delete it
+        voice_state = user.voice
+        if voice_state is None or voice_state.channel != channel:
+            try:
+                await channel.delete()
+                await self._remove_move_role(user)
+            except:
+                pass
 
-            member = guild.get_member(user.id)
-            if member and member.voice and member.voice.channel == channel:
-                self.active_channels[channel.id]["joined"] = True
-                await self._grant_move_role(guild, user.id)
-                asyncio.create_task(self._watch_owner_leave(channel, user))
-                return
+            try:
+                embed = discord.Embed(
+                    title="❌ Private Channel Deleted",
+                    description="Your private voice channel was deleted because you didn’t join within 2 minutes.",
+                    color=discord.Color.red()
+                )
+                await user.send(embed=embed)
+            except:
+                pass
 
-            await asyncio.sleep(5)
+            self.active_channels.pop(channel.id, None)
 
-    async def _watch_owner_leave(self, channel, user):
-        guild = channel.guild
-        while True:
-            if not await self.channel_exists(channel):
-                return
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        # Check if the user is the owner of one of the tracked private channels
+        move_role = member.guild.get_role(MOVE_ROLE_ID)
 
-            member = guild.get_member(user.id)
-            if not member or not member.voice or member.voice.channel != channel:
-                await self._remove_move_role(guild, user.id)
+        # User joined a channel
+        if after.channel and after.channel.id in self.active_channels:
+            owner_id = self.active_channels.get(after.channel.id)
+            if member.id == owner_id:
+                if move_role and move_role not in member.roles:
+                    try:
+                        await member.add_roles(move_role)
+                    except:
+                        pass
 
-                end_time = datetime.utcnow() + timedelta(minutes=2)
-                while True:
-                    if not await self.channel_exists(channel):
-                        return
+        # User left a channel
+        if before.channel and before.channel.id in self.active_channels:
+            owner_id = self.active_channels.get(before.channel.id)
+            if member.id == owner_id:
+                if move_role and move_role in member.roles:
+                    try:
+                        await member.remove_roles(move_role)
+                    except:
+                        pass
 
-                    member = guild.get_member(user.id)
-                    if member and member.voice and member.voice.channel == channel:
-                        await self._grant_move_role(guild, user.id)
-                        break
-
-                    if datetime.utcnow() >= end_time:
-                        await self._delete_channel(channel, user, "expired after you left.")
-                        return
-
-                    await asyncio.sleep(5)
-
-            await asyncio.sleep(5)
-
-    async def _grant_move_role(self, guild, user_id):
+    async def _remove_move_role(self, user):
         try:
-            member = await guild.fetch_member(user_id)
-            role = guild.get_role(MOVE_ROLE_ID)
-            if role and role not in member.roles:
-                await member.add_roles(role)
-        except Exception as e:
-            print(f"[MOVE ROLE ERROR] Could not grant role: {e}")
-
-    async def _remove_move_role(self, guild, user_id):
-        try:
-            member = await guild.fetch_member(user_id)
-            role = guild.get_role(MOVE_ROLE_ID)
-            if role and role in member.roles:
-                await member.remove_roles(role)
-        except Exception as e:
-            print(f"[MOVE ROLE ERROR] Could not remove role: {e}")
-
-    async def _delete_channel(self, channel, user, reason):
-        try:
-            await channel.delete()
-        except:
-            return
-        self.active_channels.pop(channel.id, None)
-        await self._remove_move_role(channel.guild, user.id)
-
-        try:
-            embed = discord.Embed(
-                title="❌ Private Channel Deleted",
-                description=f"Your private voice channel was {reason}",
-                color=discord.Color.red()
-            )
-            await user.send(embed=embed)
+            role = user.guild.get_role(MOVE_ROLE_ID)
+            if role and role in user.roles:
+                await user.remove_roles(role)
         except:
             pass
-
-    async def channel_exists(self, channel: discord.VoiceChannel):
-        try:
-            await channel.guild.fetch_channel(channel.id)
-            return True
-        except discord.NotFound:
-            return False
 
 async def setup(bot):
     await bot.add_cog(PrivateChannel(bot))
