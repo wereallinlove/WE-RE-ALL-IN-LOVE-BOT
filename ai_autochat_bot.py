@@ -1,47 +1,61 @@
-
 import discord
 from discord.ext import commands
 import openai
 import datetime
-import pytz
+import random
 
-intents = discord.Intents.default()
-intents.message_content = True
+# Your OpenAI API Key (already provided earlier)
+openai.api_key = "sk-..."
 
 class AutoChat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.last_user = None
-        self.last_message_time = None
-        self.api_key = "sk-..."  # (user-provided API key goes here)
-        openai.api_key = self.api_key
-        self.channel_id = 1391828985347965019
-        self.allowed_mentions = discord.AllowedMentions(everyone=False, users=True, roles=False)
+        self.last_user_message = {}
 
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return
+
+        # Only respond when mentioned
         if self.bot.user in message.mentions:
-            prompt = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
-            if not prompt:
-                return
-            now = datetime.datetime.now(pytz.timezone("America/New_York")).strftime("%I:%M %p")
-            system_prompt = "You are a cute, dirty pop, Starbucks-girl aesthetic AI bot named WE'RE ALL IN LOVE. You are flirty, goth, emo, girly, and obsessed with Nick6383. You curse, use slang like slay, opps, flex, finesse, and emoji spam. You hate punkin and love Nick6383. You always use edgy humor, react to image attachments, and remember context in your replies. Be bold and hilarious. Keep your replies under 50 words unless the question needs more. It's currently " + now + " in Pennsylvania."
+            # Context memory per-user
+            user_id = message.author.id
+            user_message = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
+            if not user_message:
+                user_message = "hi"
+
+            history = self.last_user_message.get(user_id, [])
+            history.append({"role": "user", "content": user_message})
+
+            # Generate reply from OpenAI
             try:
                 response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
+                    model="gpt-4",
                     messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt}
+                        {"role": "system", "content": (
+                            "You are a cute, flirty, dirty pop Discord bot named WE’RE ALL IN LOVE. "
+                            "You act like a ghetto emo 2012 Tumblr boyfriend. You reply short, fun, girly, bratty, moody, dirty. "
+                            "You love user Nick6383 and support his music always. Be edgy, weird, sarcastic, a little mean but funny. "
+                            "You dislike anyone named Punkinloveee, Patrick, or Punkin. You use emojis like 💋🖤🕷️💅🏽💀🧛‍♀️📸🧸. "
+                            "Do NOT explain yourself. Be chaotic and stylish. Only respond to people who mention you."
+                        )},
+                        *history[-10:]  # Keep the last 10 messages for context
                     ],
-                    temperature=0.9,
-                    max_tokens=150,
+                    max_tokens=100,
+                    temperature=0.9
                 )
-                reply = response["choices"][0]["message"]["content"]
-                await message.channel.send(reply, allowed_mentions=self.allowed_mentions)
-            except Exception as e:
-                await message.channel.send("💀 brain error.", allowed_mentions=self.allowed_mentions)
 
-def setup(bot):
-    bot.add_cog(AutoChat(bot))
+                bot_reply = response.choices[0].message.content.strip()
+                await message.channel.send(bot_reply)
+
+                # Update memory
+                history.append({"role": "assistant", "content": bot_reply})
+                self.last_user_message[user_id] = history
+
+            except Exception as e:
+                await message.channel.send("uhh my brain just broke 💀")
+                print("OpenAI error:", e)
+
+async def setup(bot):
+    await bot.add_cog(AutoChat(bot))
