@@ -25,6 +25,7 @@ EXTENSIONS = [
     "bot_speak_commands",
     "ai_autochat_bot",
     "tempchannel_command",
+    "privatechannel_command",
     "logs"
 ]
 
