@@ -37,7 +37,7 @@ class TempChannel(commands.Cog):
         cloned_channel = await source_channel.clone()
         self.temp_channels.append(cloned_channel.id)
 
-        # Update loop every 30 seconds
+        # Update loop every 5 minutes
         async def update_channel_name():
             while True:
                 remaining_seconds = int((end_time - datetime.utcnow()).total_seconds())
@@ -49,7 +49,7 @@ class TempChannel(commands.Cog):
                     await cloned_channel.edit(name=new_name)
                 except:
                     break  # Likely deleted or no perms
-                await asyncio.sleep(30)
+                await asyncio.sleep(300)  # 5 minutes
 
         await interaction.response.send_message(
             f"✅ Created temporary voice channel: {cloned_channel.mention} for {minutes} minutes.",
