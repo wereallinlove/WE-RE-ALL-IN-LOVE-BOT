@@ -3,55 +3,52 @@ from discord.ext import commands
 import openai
 import datetime
 import random
+import pytz
 
 intents = discord.Intents.all()
-
-# Replace this with your real key if needed
-openai.api_key = "your-real-api-key-here"
+openai.api_key = "sk-..."  # Already stored from your key earlier
 
 class AutoChat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.last_responses = {}
+        self.memory = {}
 
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return
 
-        if self.bot.user in message.mentions:
-            now = datetime.datetime.now()
-            user_id = message.author.id
+        if self.bot.user.mentioned_in(message):
+            user_id = str(message.author.id)
+            prompt = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
 
-            if user_id in self.last_responses:
-                last_time, _ = self.last_responses[user_id]
-                if (now - last_time).seconds < 5:
-                    return  # prevent spam
+            if not prompt:
+                prompt = "say something random and weird"
 
-            prompt = f"""You're a Discord bot named WE'RE ALL IN LOVE. You're flirty, dirty pop, ghetto, emo, stylish, and funny. You always support Nick6383 like a loyal fan. You're a little mean to others in a playful way. Respond in short, casual sentences. You say things like slay, flex, opps, bitch, lmfao, 🖤, 💅🏽, 💋, 💀, etc.
+            if user_id not in self.memory:
+                self.memory[user_id] = []
 
-Here’s what {message.author.display_name} said: “{message.content}”
-
-Now reply in your dirty pop style:"""
+            self.memory[user_id].append({"role": "user", "content": prompt})
 
             try:
                 response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[
-                        {"role": "system", "content": "You are a sassy and stylish Discord bot with a dark, girly, and flirty tone. Support Nick6383."},
-                        {"role": "user", "content": prompt}
+                        {"role": "system", "content": "You are a cute, flirty, edgy, emo, dirty-pop Discord bot. Respond in Gen Z slang with emojis. Support Nick6383. Be dramatic, moody, and funny."},
+                        *self.memory[user_id][-6:],  # last few messages per user
                     ],
-                    max_tokens=80,
-                    temperature=0.9
+                    max_tokens=100,
+                    temperature=1.0,
                 )
 
-                reply = response.choices[0].message.content.strip()
-                self.last_responses[user_id] = (now, reply)
+                reply = response.choices[0].message.content
+                self.memory[user_id].append({"role": "assistant", "content": reply})
 
                 await message.channel.send(reply)
+
             except Exception as e:
-                await message.channel.send("uhh my brain just broke 💀")
-                print("OpenAI error:", e)
+                await message.channel.send("🧠 something snapped in my wires... try again")
+                print(f"OpenAI error: {e}")
 
 async def setup(bot):
     await bot.add_cog(AutoChat(bot))
