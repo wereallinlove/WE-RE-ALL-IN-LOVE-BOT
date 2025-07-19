@@ -48,6 +48,7 @@ class PrivateChannel(commands.Cog):
         asyncio.create_task(self._watch_initial_join(channel, user, end_time))
 
     async def _watch_initial_join(self, channel, user, end_time):
+        guild = channel.guild
         while True:
             if not await self.channel_exists(channel):
                 return
@@ -57,33 +58,33 @@ class PrivateChannel(commands.Cog):
                 await self._delete_channel(channel, user, "expired due to inactivity.")
                 return
 
-            voice_state = channel.guild.get_member(user.id)
-            if voice_state and voice_state.voice and voice_state.voice.channel == channel:
+            member = guild.get_member(user.id)
+            if member and member.voice and member.voice.channel == channel:
                 self.active_channels[channel.id]["joined"] = True
-                await self._grant_move_role(user)
+                await self._grant_move_role(guild, user.id)
                 asyncio.create_task(self._watch_owner_leave(channel, user))
                 return
 
             await asyncio.sleep(5)
 
     async def _watch_owner_leave(self, channel, user):
+        guild = channel.guild
         while True:
             if not await self.channel_exists(channel):
                 return
 
-            voice_state = channel.guild.get_member(user.id)
-            if not voice_state or not voice_state.voice or voice_state.voice.channel != channel:
-                await self._remove_move_role(user)
+            member = guild.get_member(user.id)
+            if not member or not member.voice or member.voice.channel != channel:
+                await self._remove_move_role(guild, user.id)
 
-                # Start countdown to delete
                 end_time = datetime.utcnow() + timedelta(minutes=2)
                 while True:
                     if not await self.channel_exists(channel):
                         return
 
-                    voice_state = channel.guild.get_member(user.id)
-                    if voice_state and voice_state.voice and voice_state.voice.channel == channel:
-                        await self._grant_move_role(user)
+                    member = guild.get_member(user.id)
+                    if member and member.voice and member.voice.channel == channel:
+                        await self._grant_move_role(guild, user.id)
                         break
 
                     if datetime.utcnow() >= end_time:
@@ -94,21 +95,23 @@ class PrivateChannel(commands.Cog):
 
             await asyncio.sleep(5)
 
-    async def _grant_move_role(self, user):
+    async def _grant_move_role(self, guild, user_id):
         try:
-            role = user.guild.get_role(MOVE_ROLE_ID)
-            if role and role not in user.roles:
-                await user.add_roles(role)
-        except:
-            pass
+            member = await guild.fetch_member(user_id)
+            role = guild.get_role(MOVE_ROLE_ID)
+            if role and role not in member.roles:
+                await member.add_roles(role)
+        except Exception as e:
+            print(f"[MOVE ROLE ERROR] Could not grant role: {e}")
 
-    async def _remove_move_role(self, user):
+    async def _remove_move_role(self, guild, user_id):
         try:
-            role = user.guild.get_role(MOVE_ROLE_ID)
-            if role and role in user.roles:
-                await user.remove_roles(role)
-        except:
-            pass
+            member = await guild.fetch_member(user_id)
+            role = guild.get_role(MOVE_ROLE_ID)
+            if role and role in member.roles:
+                await member.remove_roles(role)
+        except Exception as e:
+            print(f"[MOVE ROLE ERROR] Could not remove role: {e}")
 
     async def _delete_channel(self, channel, user, reason):
         try:
@@ -116,7 +119,7 @@ class PrivateChannel(commands.Cog):
         except:
             return
         self.active_channels.pop(channel.id, None)
-        await self._remove_move_role(user)
+        await self._remove_move_role(channel.guild, user.id)
 
         try:
             embed = discord.Embed(
