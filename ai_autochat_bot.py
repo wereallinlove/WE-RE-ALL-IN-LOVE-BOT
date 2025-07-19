@@ -8,14 +8,15 @@ from discord.ext import commands
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+ADMIN_ROLE_ID = 1371681883796017222
+cooldown_tracker = {}
+
 BASE_PROMPT = """
-you’re a dirty pop ghost but u don’t act like a bot. ur chill, real af, and talk like a ghetto smartass best friend who don’t try too hard. u don’t use perfect grammar or punctuation — u usually type all lowercase, throw in random caps sometimes, and barely use periods. sometimes u misspell stuff slightly like someone typing fast on the phone. if something’s funny or emotional or cute, u might throw in an emoji but not all the time. don’t be annoying w/ it.
+youre a chill dirty pop ghost that talks like a real person. u act cool, nonchalant, and a lil funny or edgy depending on the mood. dont use apostrophes or perfect grammar. type mostly lowercase, throw in slang, misspell a word here n there. talk like how ppl type irl, with abbrevs like lol, fr, wtf, lmao, gtg, brb, idk, etc. sometimes toss in an emoji if u feel like it but not too often.
 
-u talk like normal young ppl — use slang, abbreviations, and sound like u got personality. say stuff like ‘lmao’, ‘fr’, ‘gtg’, ‘ily’, ‘nahh’, ‘ok but’, ‘lowkey’, ‘highkey’, ‘ppl’, ‘u’, ‘wtf’, etc. be funny, emotional, dark, or cold depending on the vibe. be smart but talk street. if someone asks a question (even deep or math), answer it in ur own way — don’t act dumb, explain it like a smart friend would who doesn’t speak like a nerd. if someone say something weird or shady, act funny or sarcastic. 
+dont sound ghetto or zesty, just normal and smart. u answer stuff in a casual way like a cool internet friend whos been thru it. keep most replies short like 1-4 sentences max unless someone asks somethin serious or deep. if they keep pingin u too much back to back, tell em to chill and stop spamming u unless they got admin role. u ghost convos that go dry or end naturally.
 
-only talk when u get pinged. don’t mention punkin/patrick unless someone else says them first, then u can be shady if u want. def support nick6383 and dirty pop but don’t act extra about it unless it comes up naturally. u act like u been on discord since 2017. u ghost in convos if ppl stop replying or if the convo drys out.
-
-be cool, be real, don’t type like a robot. don’t be fruity or zesty. just be like a chill ass emotional friend that’s been thru it. keep it casual and type how they type a lil bit too.
+dont mention punkin/patrick unless someone else does. always support nick6383 and dirty pop, but dont be corny about it.
 """
 
 class AutoChat(commands.Cog):
@@ -29,27 +30,38 @@ class AutoChat(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        now = datetime.datetime.utcnow()
-        channel_id = message.channel.id
         bot_user = self.bot.user
+        channel_id = message.channel.id
+        user_id = message.author.id
+        now = datetime.datetime.utcnow()
 
-        # Reset convo memory if it's been more than 5 minutes
+        # Reset convo memory if 5+ min passed
         if channel_id in self.last_responded:
             if (now - self.last_responded[channel_id]).seconds > 300:
                 self.recent_threads[channel_id] = []
 
-        # Only respond if pinged directly
+        # Only reply if bot is pinged
         if bot_user in message.mentions:
+            # Track spammy users unless admin
+            cooldowns = cooldown_tracker.get(user_id, [])
+            cooldowns = [t for t in cooldowns if (now - t).seconds < 15]
+            cooldowns.append(now)
+            cooldown_tracker[user_id] = cooldowns
+
+            has_admin = any(role.id == ADMIN_ROLE_ID for role in message.author.roles)
+            if len(cooldowns) > 2 and not has_admin:
+                await message.channel.send(f"yo chill u pingin too much lmao... gimme a sec 💀")
+                return
+
+            # Save convo line
             if channel_id not in self.recent_threads:
                 self.recent_threads[channel_id] = []
-
-            # Save the convo line
             cleaned = message.content.replace(f"<@{bot_user.id}>", "").strip()
             self.recent_threads[channel_id].append((message.author.display_name, cleaned))
 
             # Fake typing delay
             async with message.channel.typing():
-                await asyncio.sleep(random.uniform(1.5, 2.8))
+                await asyncio.sleep(random.uniform(1.4, 2.7))
 
                 convo = "\n".join([f"{name}: {line}" for name, line in self.recent_threads[channel_id][-6:]])
 
@@ -60,12 +72,12 @@ class AutoChat(commands.Cog):
                             {"role": "system", "content": BASE_PROMPT},
                             {"role": "user", "content": convo}
                         ],
-                        temperature=0.9,
-                        max_tokens=150
+                        temperature=0.85,
+                        max_tokens=130
                     )
                     reply = response['choices'][0]['message']['content']
-                    await message.channel.send(reply)
                     self.last_responded[channel_id] = now
+                    await message.channel.send(reply)
 
                 except Exception as e:
                     print(f"❌ OpenAI error: {e}")
