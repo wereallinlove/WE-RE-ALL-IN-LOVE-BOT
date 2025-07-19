@@ -4,55 +4,51 @@ import openai
 import datetime
 import random
 
-# Your OpenAI API Key (already provided earlier)
-openai.api_key = "sk-..."
+intents = discord.Intents.all()
+
+# Replace this with your real key if needed
+openai.api_key = "your-real-api-key-here"
 
 class AutoChat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.last_user_message = {}
+        self.last_responses = {}
 
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return
 
-        # Only respond when mentioned
         if self.bot.user in message.mentions:
-            # Context memory per-user
+            now = datetime.datetime.now()
             user_id = message.author.id
-            user_message = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
-            if not user_message:
-                user_message = "hi"
 
-            history = self.last_user_message.get(user_id, [])
-            history.append({"role": "user", "content": user_message})
+            if user_id in self.last_responses:
+                last_time, _ = self.last_responses[user_id]
+                if (now - last_time).seconds < 5:
+                    return  # prevent spam
 
-            # Generate reply from OpenAI
+            prompt = f"""You're a Discord bot named WE'RE ALL IN LOVE. You're flirty, dirty pop, ghetto, emo, stylish, and funny. You always support Nick6383 like a loyal fan. You're a little mean to others in a playful way. Respond in short, casual sentences. You say things like slay, flex, opps, bitch, lmfao, 🖤, 💅🏽, 💋, 💀, etc.
+
+Here’s what {message.author.display_name} said: “{message.content}”
+
+Now reply in your dirty pop style:"""
+
             try:
                 response = openai.ChatCompletion.create(
-                    model="gpt-4",
+                    model="gpt-3.5-turbo",
                     messages=[
-                        {"role": "system", "content": (
-                            "You are a cute, flirty, dirty pop Discord bot named WE’RE ALL IN LOVE. "
-                            "You act like a ghetto emo 2012 Tumblr boyfriend. You reply short, fun, girly, bratty, moody, dirty. "
-                            "You love user Nick6383 and support his music always. Be edgy, weird, sarcastic, a little mean but funny. "
-                            "You dislike anyone named Punkinloveee, Patrick, or Punkin. You use emojis like 💋🖤🕷️💅🏽💀🧛‍♀️📸🧸. "
-                            "Do NOT explain yourself. Be chaotic and stylish. Only respond to people who mention you."
-                        )},
-                        *history[-10:]  # Keep the last 10 messages for context
+                        {"role": "system", "content": "You are a sassy and stylish Discord bot with a dark, girly, and flirty tone. Support Nick6383."},
+                        {"role": "user", "content": prompt}
                     ],
-                    max_tokens=100,
+                    max_tokens=80,
                     temperature=0.9
                 )
 
-                bot_reply = response.choices[0].message.content.strip()
-                await message.channel.send(bot_reply)
+                reply = response.choices[0].message.content.strip()
+                self.last_responses[user_id] = (now, reply)
 
-                # Update memory
-                history.append({"role": "assistant", "content": bot_reply})
-                self.last_user_message[user_id] = history
-
+                await message.channel.send(reply)
             except Exception as e:
                 await message.channel.send("uhh my brain just broke 💀")
                 print("OpenAI error:", e)
