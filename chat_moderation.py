@@ -9,7 +9,7 @@ BYPASS_ROLE_ID = 1371681883796017222
 
 SLURS = [
     "retard", "tranny", "nigger", "nigga", "faggot", "dyke", "chink", "spic", "kike", "gook", "coon",
-    "clanker", "cripple", "autist", "bitch", "twink", "shemale",
+    "clanker", "cripple", "autist", "twink", "shemale",
     "sandnigger", "towelhead"
 ]
 
