@@ -27,6 +27,7 @@ EXTENSIONS = [
     "tempchannel_command",
     "privatechannel_command",
     "beat_sorter",
+    "chat_moderation",
     "logs"
 ]
 
