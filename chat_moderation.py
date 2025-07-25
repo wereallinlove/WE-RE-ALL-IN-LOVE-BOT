@@ -9,8 +9,8 @@ BYPASS_ROLE_ID = 1371681883796017222
 
 SLURS = [
     "retard", "tranny", "nigger", "nigga", "faggot", "dyke", "chink", "spic", "kike", "gook", "coon",
-    "clanker", "cripple", "autist", "bitch", "whore", "slut", "hag", "twink", "trap", "shemale",
-    "sandnigger", "towelhead", "house nigger", "uncle tom", "mongoloid", "handicapped"
+    "clanker", "cripple", "autist", "bitch", "twink", "shemale",
+    "sandnigger", "towelhead", "house nigger", "uncle tom", "mongoloid"
 ]
 
 BLOCKED_NAMES = ["patrick", "punkin", "punkinlove", "punkinloveee"]
